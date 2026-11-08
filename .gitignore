@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build
+dist/
+dist-ssr/
+build/
+*.local
+
+# netlify
+.netlify/
+.netlify-cli/
+
+# env — never commit credentials
+.env
+.env.*
+!.env.example
+
+# editor / os
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# test / tooling cache
+coverage/
+.vitest/
+*.tsbuildinfo

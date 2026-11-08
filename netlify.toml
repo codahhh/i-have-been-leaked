@@ -1,0 +1,52 @@
+# Netlify configuration — i have been leaked
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NPM_FLAGS = "--no-audit --no-fund"
+
+[functions]
+  node_bundler = "esbuild"
+  # The provider adapters make at most one outbound call each, in parallel.
+  # Keep this comfortably above the 9s internal deadline.
+  # (Netlify's default is 10s for synchronous functions.)
+
+# Public API surface → serverless functions.
+# Declared before the SPA fallback so /api/* never resolves to index.html.
+[[redirects]]
+  from = "/api/check-email"
+  to = "/.netlify/functions/check-email"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/password-range"
+  to = "/.netlify/functions/password-range"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/providers"
+  to = "/.netlify/functions/providers"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/breach-stats"
+  to = "/.netlify/functions/breach-stats"
+  status = 200
+  force = true
+
+# Single-page application fallback.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[dev]
+  command = "npm run dev"
+  targetPort = 5173
+  framework = "#custom"
