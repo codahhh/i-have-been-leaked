@@ -7,7 +7,14 @@
  */
 
 import type { ProviderCapabilityEntry, ProvidersResponse } from '../../../src/types/index'
-import { EMAIL_PROVIDER_IDS, PROVIDERS, RATE_LIMITS, isProviderConfigured } from '../config'
+import {
+  EMAIL_PROVIDER_IDS,
+  PHONE_PROVIDER_IDS,
+  PROVIDERS,
+  RATE_LIMITS,
+  USERNAME_PROVIDER_IDS,
+  isProviderConfigured,
+} from '../config'
 import { checkRateLimit, clientKey } from '../rateLimit'
 import { apiError, json, methodNotAllowed } from '../responses'
 
@@ -31,15 +38,16 @@ export function handleProviders(request: Request): Response {
     lookups: definition.lookups,
     configured: isProviderConfigured(definition),
     activeForEmail: EMAIL_PROVIDER_IDS.includes(definition.id),
+    activeForUsername: USERNAME_PROVIDER_IDS.includes(definition.id),
   }))
 
   const payload: ProvidersResponse = {
     providers,
     emailProviders: EMAIL_PROVIDER_IDS.filter((id) => isProviderConfigured(PROVIDERS[id])),
-    // V1: no licensed source covers usernames or phone numbers. Stated
-    // explicitly rather than faked — see the README for the extension path.
-    usernameProviders: [],
-    phoneProviders: [],
+    usernameProviders: USERNAME_PROVIDER_IDS.filter((id) => isProviderConfigured(PROVIDERS[id])),
+    // No free source covers phone numbers: stated explicitly rather than faked.
+    // See the README for the extension path.
+    phoneProviders: [...PHONE_PROVIDER_IDS],
     passwordRangeAvailable: true,
   }
 

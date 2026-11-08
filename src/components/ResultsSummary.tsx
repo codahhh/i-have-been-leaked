@@ -5,7 +5,7 @@ import {
   ShieldAlert,
   type LucideIcon,
 } from 'lucide-react'
-import type { EmailCheckResponse, LookupState } from '@/types'
+import type { CheckResponse, LookupKind, LookupState } from '@/types'
 import { useI18n } from '@/i18n'
 import type { TranslationKey } from '@/i18n/fr'
 import { cn } from '@/utils/cn'
@@ -67,10 +67,12 @@ const THEMES: Record<LookupState, StateTheme> = {
 
 export function ResultsSummary({
   result,
-  email,
+  identifier,
+  kind,
 }: {
-  result: EmailCheckResponse
-  email: string
+  result: CheckResponse
+  identifier: string
+  kind: LookupKind
 }) {
   const { t, tp, formatTimestamp, formatDuration, formatNumber } = useI18n()
   const theme = THEMES[result.state]
@@ -110,7 +112,9 @@ export function ResultsSummary({
 
           <div className="shrink-0 sm:text-right">
             <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-faint">
-              {t('results.for', { email })}
+              {kind === 'email'
+                ? t('results.for', { email: identifier })
+                : t('results.forUsername', { username: identifier })}
             </p>
             <p className="mt-1 text-[11.5px] text-faint">
               {t('results.checkedAt', { date: formatTimestamp(result.checkedAt) })}

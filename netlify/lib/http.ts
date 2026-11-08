@@ -24,7 +24,11 @@ export interface HttpOptions {
   timeoutMs: number
   /** Absolute timestamp (ms) after which the request must be abandoned. */
   deadline?: number
+  /** Refuse to buffer a body larger than this (default 4 MB). */
+  maxBytes?: number
 }
+
+const DEFAULT_MAX_BYTES = 4_000_000
 
 export const DEFAULT_JSON_HEADERS = {
   Accept: 'application/json',
@@ -58,7 +62,25 @@ export async function fetchWithTimeout(
       redirect: 'follow',
     })
 
+    const declared = Number(response.headers.get('content-length'))
+    if (Number.isFinite(declared) && declared > (options.maxBytes ?? DEFAULT_MAX_BYTES)) {
+      return {
+        kind: 'network_error',
+        detail: 'Provider response exceeded the size limit.',
+        durationMs: Date.now() - startedAt,
+      }
+    }
+
     const body = await response.text()
+    if (body.length > (options.maxBytes ?? DEFAULT_MAX_BYTES)) {
+      // Refuse rather than parse a truncated payload into a wrong answer.
+      return {
+        kind: 'network_error',
+        detail: 'Provider response exceeded the size limit.',
+        durationMs: Date.now() - startedAt,
+      }
+    }
+
     return {
       kind: 'response',
       status: response.status,

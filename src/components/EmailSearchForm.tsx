@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Mail, ShieldCheck } from 'lucide-react'
-import type { EmailCheckResponse } from '@/types'
+import type { CheckResponse } from '@/types'
 import { useI18n } from '@/i18n'
-import { checkEmail } from '@/services/emailCheck'
+import { checkEmail } from '@/services/check'
 import { loadProviders } from '@/services/providers'
 import { isValidEmail, MAX_EMAIL_LENGTH } from '@/utils/validation'
 import { cn } from '@/utils/cn'
@@ -12,7 +12,7 @@ import { TextField } from './ui/TextField'
 import { ErrorState } from './ErrorState'
 import { LoadingState } from './LoadingState'
 
-const DEFAULT_PROVIDERS = ['XposedOrNot', 'Orelys']
+const DEFAULT_PROVIDERS = ['XposedOrNot', 'LeakCheck']
 
 export function joinWithConjunction(items: string[], language: 'fr' | 'en'): string {
   if (items.length === 0) return ''
@@ -22,7 +22,7 @@ export function joinWithConjunction(items: string[], language: 'fr' | 'en'): str
 }
 
 interface EmailSearchFormProps {
-  onResult: (email: string, result: EmailCheckResponse) => void
+  onResult: (email: string, result: CheckResponse) => void
   variant?: 'full' | 'compact'
   autoFocus?: boolean
   className?: string

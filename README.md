@@ -1,7 +1,11 @@
 # i have been leaked
 
 A privacy-first data breach checker. French by default, English on demand.
-Built with React 19, TypeScript, Vite, Tailwind CSS and Netlify Functions.
+Built with React 19, TypeScript, Vite, Tailwind CSS, and Netlify Functions or
+Vercel Functions.
+
+**No API key, no account and no environment variable is needed to run it.** Both
+breach sources are queried over free, documented, keyless endpoints.
 
 The guiding principle is stated in the interface itself: **an incomplete result
 labelled as incomplete is better than a reassuring "you are fine" that happens
@@ -14,24 +18,45 @@ nothing that would be a guess is ever displayed.
 
 | Check | State | How |
 | --- | --- | --- |
-| **Email address** | ✅ Live | `XposedOrNot` (no key) + `Orelys` (key required), queried in parallel, normalised, merged, de-duplicated. |
-| **Password** | ✅ Live | Have I Been Pwned **Pwned Passwords** range API with k-anonymity. Only a 5-character SHA-1 prefix leaves the browser. |
-| **Username** | ⛔ Explicit unavailable state | No free, universal, lawful source exists. The form validates input and then says so. |
-| **Phone number** | ⛔ Explicit unavailable state | International input + E.164 validation are real; coverage is not. Nothing is invented. |
+| **Email address** | ✅ Live | `XposedOrNot` + `LeakCheck` public API, both keyless, queried in parallel, normalised, merged, de-duplicated. |
+| **Username** | ✅ Live | `LeakCheck` public API, the one free source that really supports username search. Coverage is narrower than email, and the UI says so. |
+| **Password** | ✅ Live | Have I Been Pwned **Pwned Passwords** range API (free, unlimited, no key) with k-anonymity. Only a 5-character SHA-1 prefix leaves the browser. |
+| **Phone number** | ⛔ Explicit unavailable state | International input + E.164 validation are real; the public tiers of both sources reserve phone search for paid plans. Nothing is invented. |
 
 Everything else — navigation, FR/EN translation, error states, results page,
 provider transparency, privacy policy, documentation — is complete.
 
-### What remains to be configured
+### The real limits of "free" APIs
 
-1. **Orelys.** Add `ORELYS_API_KEY` in the Netlify environment. Until then the
-   provider is displayed as *not configured* and every email lookup is marked
-   **incomplete** rather than clean. If your plan documents a custom auth
-   header, set `ORELYS_API_KEY_HEADER` / `ORELYS_API_KEY_PREFIX`.
-2. **Username and phone providers.** Both need a licensed data source; see
-   *Extending the provider layer* below. The UI already reads its capability
-   matrix from `/api/providers`, so no interface change is required.
-3. **Fleet-wide rate limiting.** The built-in limiter is per function instance
+There is no such thing as a free, unlimited, keyless *email* breach API. These
+are the documented quotas of the ones that are genuinely free:
+
+| Source | Key | Quota | Notes |
+| --- | --- | --- | --- |
+| XposedOrNot `/v1/check-email/{email}?details=true` | none | 2 req/s, 25/hour, 100/day per IP | Breach names, dates, descriptions, exposed data |
+| LeakCheck `/api/public?check=…` | none | 1 req/s | Sources and exposed-data *categories*; never the data. Requires a "Powered by LeakCheck" link for commercial use (present in the footer) |
+| HIBP `/range/{prefix}` | none | none documented | Free and effectively unlimited |
+
+Consequences, stated plainly:
+
+1. **One request per provider per lookup.** XposedOrNot's `details=true` returns
+   the optional metadata in the same call, halving quota consumption.
+2. **Outbound calls are spaced** (`netlify/lib/throttle.ts`): 500 ms between
+   XposedOrNot calls, 1 s between LeakCheck calls, per instance.
+3. **A busy deployment can still hit a daily cap.** The providers answer `429`,
+   which the UI reports as an *incomplete* lookup with the retry delay — never as
+   clean. That is the correct behaviour, and it is not hidden.
+4. **The 100 requests/day figure is per IP**, and serverless egress IPs are
+   shared. For serious traffic, point `netlify/lib/config.ts` at a keyed plan —
+   the adapters do not change.
+
+### What is still missing, and why
+
+1. **Phone coverage.** LeakCheck answers `Could not determine search type
+   automatically` for a phone number on the public tier; the feature is paid.
+   The phone checker therefore validates the number and reports an unavailable
+   state. See *Extending the provider layer*.
+2. **Fleet-wide rate limiting.** The built-in limiter is per function instance
    (see *Security model*).
 
 ---
@@ -40,13 +65,15 @@ provider transparency, privacy policy, documentation — is complete.
 
 ```
 index.html
-netlify.toml                     build · redirects · functions
+netlify.toml                     Netlify: build · redirects · functions
+vercel.json                      Vercel: SPA rewrite · security headers
+api/                             Vercel entry points (same handlers as Netlify)
 public/
   _headers                       CSP, HSTS, Permissions-Policy, cache rules
   favicon.svg  robots.txt
 netlify/
-  functions/                     HTTP entry points only (thin wrappers)
-    check-email.ts  password-range.ts  providers.ts  breach-stats.ts
+  functions/                     Netlify entry points only (thin wrappers)
+    check-email.ts  check-username.ts  password-range.ts  providers.ts  breach-stats.ts
   lib/
     config.ts                    ← every endpoint, timeout, limit, key name
     http.ts                      deadline-aware fetch + tolerant payload readers
@@ -55,37 +82,43 @@ netlify/
     log.ts                       PII-scrubbing logger
     rateLimit.ts                 salted-hash fixed window
     responses.ts                 security headers, origin check, body limits
+    throttle.ts                  outbound spacing, per provider quota
     providers/
-      xposedOrNot.ts  orelys.ts  ← one adapter per source
+      xposedOrNot.ts  leakcheck.ts  ← one adapter per source
     handlers/
-      checkEmail.ts  passwordRange.ts  providers.ts  breachStats.ts
+      checkLookup.ts  passwordRange.ts  providers.ts  breachStats.ts
 src/
   types/index.ts                 shared domain types (client + server)
   i18n/  fr.ts  en.ts  index.tsx  ← flat typed dictionary, no missing keys
-  services/                      api client, pwnedPasswords, providers, emailCheck
+  services/                      api client, pwnedPasswords, providers, check
   components/                    Header, Footer, forms, results, provider status…
     ui/                          Button, Card, Badge, TextField, Select, Feedback
-  pages/                         Home, 4 checkers, results, About, Privacy, Docs
+  pages/                         Home, 4 checkers, shared Results, About, Privacy, Docs
   utils/                         validation, phone, exposure mapping, formatting
   state/ResultsContext.tsx       in-memory only — never persisted
-tests/                           114 unit + component tests
+tests/                           123 unit + component tests
 ```
 
-### Request flow — email
+### Request flow — email and username
 
 ```
-browser ──POST /api/check-email {email, consent:true}──▶ Netlify Function
-                                                          │
-                              ┌───────────────────────────┴──────────────┐
-                              ▼                                          ▼
-                    XposedOrNot check-email                    Orelys /breaches/check
-                    (+ best-effort analytics)                  (if configured)
-                              └───────────────┬──────────────────────────┘
+browser ──POST /api/check-email    {email, consent:true}──┐
+        ──POST /api/check-username {username, consent:true}┤
+                                                            ▼
+                                                  function (shared)
+                              ┌─────────────────────────────┴──────────────┐
+                              ▼                                            ▼
+              XposedOrNot check-email?details=true              LeakCheck /api/public
+              (email only)                                      (email + username)
+                              └───────────────┬────────────────────────────┘
                                               ▼
                           normalise → merge → derive state
                                               ▼
-             { state, breaches[], providers[ {status, responded, error} ] }
+             { kind, state, breaches[], providers[ {status, responded, error} ] }
 ```
+
+Each endpoint queries only the adapters that really support that identifier —
+the username route never calls XposedOrNot, which has no username endpoint.
 
 The verdict is derived, never assumed:
 
@@ -96,8 +129,8 @@ if (respondedProviders < totalProviders) return 'incomplete'  // amber
 return 'clean'                                     // green
 ```
 
-`totalProviders` counts every source that *should* answer, so a missing API key
-turns green into amber instead of silently shrinking the denominator.
+`totalProviders` counts every source that *should* answer, so a silenced
+provider turns green into amber instead of silently shrinking the denominator.
 
 ### Request flow — password (k-anonymity)
 
@@ -119,6 +152,7 @@ never placed in a URL. `Add-Padding` rows (count `0`) are ignored.
 | Method | Path | Notes |
 | --- | --- | --- |
 | `POST` | `/api/check-email` | `{ email, consent: true }`. `no-store`. 8 req/min/IP. |
+| `POST` | `/api/check-username` | `{ username, consent: true }`. `no-store`. 8 req/min/IP. |
 | `GET` | `/api/password-range?prefix=ABCDE` | Relay for the range API; 5 hex chars only. |
 | `GET` | `/api/providers` | Capability matrix + configuration state. |
 | `GET` | `/api/breach-stats` | Real aggregates from the XposedOrNot public index. |
@@ -158,8 +192,13 @@ provider matrix and the aggregates, which are explicitly cacheable), plus
   9 s budget, under Netlify's 10 s synchronous limit.
 - Timeouts, `429`, `5xx`, unparseable payloads, unknown schemas and missing keys
   are all distinct states in the response — and the UI translates each one.
+- A provider body that *looks* successful but contradicts itself (e.g. LeakCheck
+  reporting matches without naming a source) is rejected as `invalid_response`
+  rather than being read as "no breach" — the one mistake this project must
+  never make.
 
-**Headers** (`public/_headers`): strict CSP (`connect-src` allows only our own
+**Headers** (`public/_headers` on Netlify, `headers` in `vercel.json` on Vercel):
+strict CSP (`connect-src` allows only our own
 origin plus `api.pwnedpasswords.com`), HSTS, `nosniff`, `X-Frame-Options: DENY`,
 `Referrer-Policy: no-referrer`, restrictive `Permissions-Policy`,
 `frame-ancestors 'none'`.
@@ -172,7 +211,7 @@ function — the limiter is deliberately a single small module so it can be
 replaced without touching the handlers.
 
 **Honest about anonymity**: the disclosure before the checkbox states plainly
-that XposedOrNot and Orelys necessarily see the address they are asked to check.
+that XposedOrNot and LeakCheck necessarily see the value they are asked to check.
 No "anonymous" claim is made anywhere.
 
 ---
@@ -191,8 +230,8 @@ as they will in production.
 
 ```bash
 npm run typecheck  # tsc --noEmit (strict, no unused locals)
-npm test           # 114 tests: validation, normalisation, merge, providers,
-                   # handler, password protocol, i18n parity, UI flows
+npm test           # 123 tests: validation, normalisation, merge, providers,
+                   # handlers, password protocol, i18n parity, UI flows
 npm run build      # typecheck + bundle to dist/
 npm run preview    # serve the production build
 ```
@@ -201,8 +240,9 @@ npm run preview    # serve the production build
 
 - `tests/providers.test.ts` — every failure mode is asserted to be *not* clean:
   `429`, `5xx`, network error, abort, unparseable body, unknown schema, missing key.
-- `tests/checkEmail.test.ts` — consent gating, `no-store`, 429 burst, and proof
-  that the submitted address never appears in an error payload.
+- `tests/checkLookup.test.ts` — consent gating, `no-store`, 429 burst, merging
+  across both sources, the username route calling only LeakCheck, and proof that
+  the submitted value never appears in an error payload.
 - `tests/password.test.ts` — the request URL contains the prefix and *not* the
   rest of the digest; padding rows are ignored; the password is absent from
   storage.
@@ -222,14 +262,11 @@ npm run preview    # serve the production build
    - functions `netlify/functions`, esbuild bundler
    - `/api/*` rewrites to the functions (declared **before** the SPA fallback)
    - `public/_headers` applied at the edge
-3. Add environment variables (Site settings → Environment variables):
-   ```
-   ORELYS_API_KEY=<your key>        # optional but recommended
-   ```
+3. No environment variables are required.
 4. Deploy. Verify:
-   - `GET /api/providers` → `xposedornot.configured = true`
+   - `GET /api/providers` → `xposedornot` and `leakcheck` both `configured: true`
    - a lookup for a known-leaked address → red state, provider statuses listed
-   - a lookup with Orelys unset → amber "incomplete", never green
+   - switch off the network for one provider → amber "incomplete", never green
 
 Or from the CLI:
 
@@ -244,8 +281,28 @@ netlify deploy --build --prod
 - Netlify's synchronous function limit is 10 s; the internal budget is 9 s
   (`LIMITS.lookupDeadlineMs`) so the function always answers with a state
   instead of being killed.
-- ``npm run dev`` is the only Vite-only path; nothing depends on a database,
+- `npm run dev` is the only Vite-only path; nothing depends on a database,
   a paid service or an API key to render and behave correctly.
+
+## Deployment (Vercel)
+
+The same handlers run on Vercel through Web-standard function entry points.
+
+1. Import the repository in Vercel (framework preset: **Vite**).
+2. `vercel.json` already declares the build, the SPA rewrite
+   (`/((?!api/).*) → /index.html`) and the security headers.
+3. Every file in `api/` becomes a function at the matching `/api/*` path:
+   `check-email`, `check-username`, `password-range`, `providers`, `breach-stats`.
+4. No environment variables are required.
+
+```bash
+npm i -g vercel
+vercel --prod
+```
+
+Netlify-specific files (`netlify.toml`, `public/_headers`) are ignored by Vercel,
+and `vercel.json` + `api/` are ignored by Netlify — the two deployments coexist
+without changing a line of application code.
 
 ---
 
@@ -261,9 +318,11 @@ export const PROVIDERS = {
     displayName: 'My Provider',
     homepage: 'https://example.com',
     documentation: 'https://example.com/docs',
-    lookups: ['username'],           // ← claimed capability
+    lookups: ['phone'],              // ← the capability you can really deliver
     coverage: 'One factual sentence.',
     timeoutMs: 6000,
+    minIntervalMs: 1000,
+    quota: '1 request/s',
     apiKeyEnvVar: 'MYPROVIDER_API_KEY',
     endpoints: { checkEmail: (email) => `https://api.example.com/check/${encodeURIComponent(email)}` },
     setupNote: 'Requires MYPROVIDER_API_KEY.',
@@ -272,11 +331,15 @@ export const PROVIDERS = {
 }
 ```
 
-2. Implement `queryMyProvider(email, deadline): Promise<ProviderResult>` in
+A provider without a key is fully supported: set `apiKeyEnvVar: null` and the
+adapter is queried straight away, like the two shipped sources.
+
+2. Implement `queryMyProvider(value, deadline): Promise<ProviderResult>` in
    `netlify/lib/providers/`, returning the shared shape — and **never** mapping
    a failure to `not_found`.
-3. Register it in `PROVIDER_QUERIES` (`handlers/checkEmail.ts`) and, for another
-   lookup type, in the capability matrix (`handlers/providers.ts`).
+3. Register it in `QUERIES` (`handlers/checkLookup.ts`), add its id to
+   `EMAIL_PROVIDER_IDS` / `USERNAME_PROVIDER_IDS` / `PHONE_PROVIDER_IDS`, and the
+   capability matrix (`handlers/providers.ts`) follows automatically.
 4. Nothing else: normalisation, merging, status display, verdict derivation and
    translation are already provider-agnostic. Adding a key to the dictionary is
    the only UI work, and `en.ts` is typed against `fr.ts` so a missing
@@ -311,6 +374,6 @@ export const PROVIDERS = {
 
 Apache License 2.0 — see `LICENSE`.
 
-Not affiliated with XposedOrNot, Orelys or Have I Been Pwned. Provider terms and
+Not affiliated with XposedOrNot, LeakCheck or Have I Been Pwned. Provider terms and
 rate limits must be respected; the adapters make one request per provider per
 lookup, with no retries and no caching of personal results.

@@ -5,8 +5,9 @@
  * application lives here — nothing provider-specific is hardcoded anywhere
  * else (frontend included: the UI reads capabilities from `/api/providers`).
  *
- * Secrets are read from the environment at request time and are never
- * serialised, returned or logged.
+ * Both providers below are **free and keyless**: the deployment works with no
+ * environment variables at all. Their published limits are respected by the
+ * throttle in `throttle.ts` plus the per-client rate limiter in `rateLimit.ts`.
  */
 
 import type { LookupCapability, ProviderId } from '../../src/types/index'
@@ -22,12 +23,15 @@ export interface ProviderDefinition {
   coverage: string
   /** Per-request deadline. */
   timeoutMs: number
+  /** Minimum spacing between two calls to this provider, per instance. */
+  minIntervalMs: number
+  /** Documented quota, surfaced verbatim in the UI and the README. */
+  quota: string
   /** Name of the environment variable holding the API key, if any. */
   apiKeyEnvVar: string | null
   endpoints: {
-    checkEmail: (email: string) => string
-    /** Optional enrichment endpoint, best-effort. */
-    enrichEmail?: (email: string) => string
+    checkEmail?: (email: string) => string
+    checkUsername?: (username: string) => string
     /** Public breach index used for aggregate statistics only. */
     breachIndex?: string
   }
@@ -37,6 +41,7 @@ export interface ProviderDefinition {
 }
 
 const XPOSEDORNOT_BASE = 'https://api.xposedornot.com'
+const LEAKCHECK_PUBLIC_BASE = 'https://leakcheck.io/api/public'
 
 export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
   xposedornot: {
@@ -47,13 +52,15 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
     lookups: ['email'],
     coverage:
       'Open breach index covering thousands of publicly disclosed breaches. Free email endpoint, no key required.',
-    timeoutMs: 6000,
+    timeoutMs: 6500,
+    minIntervalMs: 500,
+    quota: '2 requests/s, 25/hour, 100/day per IP',
     apiKeyEnvVar: null,
     endpoints: {
+      // `details=true` returns breach names *and* their metadata in a single
+      // call, which halves the quota consumed per lookup.
       checkEmail: (email) =>
-        `${XPOSEDORNOT_BASE}/v1/check-email/${encodeURIComponent(email)}`,
-      enrichEmail: (email) =>
-        `${XPOSEDORNOT_BASE}/v1/breach-analytics?email=${encodeURIComponent(email)}`,
+        `${XPOSEDORNOT_BASE}/v1/check-email/${encodeURIComponent(email)}?details=true`,
       breachIndex: `${XPOSEDORNOT_BASE}/v1/breaches`,
     },
     setupNote:
@@ -61,27 +68,45 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
     terms: 'https://xposedornot.com/privacy',
   },
 
-  orelys: {
-    id: 'orelys',
-    displayName: 'Orelys',
-    homepage: 'https://orelys.io',
-    documentation: 'https://api.orelys.io',
-    lookups: ['email'],
+  leakcheck: {
+    id: 'leakcheck',
+    displayName: 'LeakCheck',
+    homepage: 'https://leakcheck.io',
+    documentation: 'https://docs.leakcheck.io/public-api/lookup',
+    lookups: ['email', 'username'],
     coverage:
-      'Secondary email breach source queried alongside XposedOrNot so that a gap in one index does not become a false negative.',
-    timeoutMs: 6000,
-    apiKeyEnvVar: 'ORELYS_API_KEY',
+      'Public API over 10B+ leaked records. Reports the breach sources and the categories of exposed data — never the data itself.',
+    timeoutMs: 5000,
+    minIntervalMs: 1000,
+    quota: '1 request/s (public tier)',
+    apiKeyEnvVar: null,
     endpoints: {
-      checkEmail: () => 'https://api.orelys.io/v1/breaches/check',
+      checkEmail: (email) =>
+        `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(email)}`,
+      checkUsername: (username) =>
+        `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(username)}`,
     },
     setupNote:
-      'Requires the ORELYS_API_KEY environment variable (and, if your plan documents it, ORELYS_API_KEY_HEADER). Until it is set, Orelys is reported as “not configured” and results are marked incomplete — never as clean.',
-    terms: 'https://orelys.io/terms',
+      'Works without credentials. The public tier is free, including commercial use, and requires a “Powered by LeakCheck” link.',
+    terms: 'https://leakcheck.io/terms',
   },
 }
 
 /** Providers queried by the email checker, in display order. */
-export const EMAIL_PROVIDER_IDS: ProviderId[] = ['xposedornot', 'orelys']
+export const EMAIL_PROVIDER_IDS: ProviderId[] = ['xposedornot', 'leakcheck']
+
+/** Providers queried by the username checker, in display order. */
+export const USERNAME_PROVIDER_IDS: ProviderId[] = ['leakcheck']
+
+/**
+ * Providers queried by the phone checker.
+ *
+ * Still empty on purpose: LeakCheck's public tier answers "Could not determine
+ * search type automatically" for a phone number (phone search is a paid-tier
+ * feature), and XposedOrNot has no phone endpoint. Rather than inventing a
+ * result, the phone checker reports an unavailable state.
+ */
+export const PHONE_PROVIDER_IDS: ProviderId[] = []
 
 /** Have I Been Pwned — Pwned Passwords range API (k-anonymity, no key). */
 export const PWNED_PASSWORDS = {
@@ -105,6 +130,7 @@ export const STATS = {
 /** Abuse protection. Per-instance, in-memory (see README for scaling notes). */
 export const RATE_LIMITS = {
   checkEmail: { limit: 8, windowSeconds: 60 },
+  checkUsername: { limit: 8, windowSeconds: 60 },
   passwordRange: { limit: 60, windowSeconds: 60 },
   providers: { limit: 60, windowSeconds: 60 },
   breachStats: { limit: 30, windowSeconds: 60 },
@@ -113,10 +139,10 @@ export const RATE_LIMITS = {
 /** Hard limits enforced on incoming requests. */
 export const LIMITS = {
   maxBodyBytes: 4096,
-  /** Overall server-side budget for one email lookup (Netlify caps at 10s). */
+  /** Largest provider body we are willing to buffer and parse. */
+  maxResponseBytes: 4_000_000,
+  /** Overall server-side budget for one lookup (Netlify caps at 10s). */
   lookupDeadlineMs: 9000,
-  /** Extra budget granted to the optional enrichment call. */
-  enrichmentBudgetMs: 3000,
   userAgent: 'i-have-been-leaked/1.0 (+https://github.com/codahhh/i-have-been-leaked)',
 } as const
 
@@ -127,7 +153,7 @@ export function isProviderConfigured(definition: ProviderDefinition): boolean {
 }
 
 export function readEnv(name: string): string | undefined {
-  // Netlify exposes functions' environment through `process.env`.
+  // Serverless runtimes expose functions' environment through `process.env`.
   const value = typeof process !== 'undefined' ? process.env?.[name] : undefined
   return typeof value === 'string' && value.length > 0 ? value : undefined
 }

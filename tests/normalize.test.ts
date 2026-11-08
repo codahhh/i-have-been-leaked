@@ -9,6 +9,7 @@ function provider(overrides: Partial<ProviderResult> & { provider: ProviderResul
     status: 'ok',
     responded: true,
     breaches: [],
+    exposedCategories: [],
     error: null,
     queriedAt: '2026-01-01T00:00:00.000Z',
     durationMs: 10,
@@ -46,7 +47,7 @@ describe('normalisation', () => {
 
   it('builds a stable id from domain, falling back to the name', () => {
     const a = toBreach({ name: 'Adobe' }, 'xposedornot')
-    const b = toBreach({ name: 'Adobe' }, 'orelys')
+    const b = toBreach({ name: 'Adobe' }, 'leakcheck')
     expect(a.id).toBe(b.id)
     expect(a.id).toMatch(/^b_[a-z0-9-]+$/)
 
@@ -55,9 +56,9 @@ describe('normalisation', () => {
   })
 
   it('drops unknown pwn counts rather than showing zero', () => {
-    expect(toBreach({ name: 'X', pwnCount: 0 }, 'orelys').pwnCount).toBeNull()
-    expect(toBreach({ name: 'X', pwnCount: -5 }, 'orelys').pwnCount).toBeNull()
-    expect(toBreach({ name: 'X', pwnCount: 152_445_165 }, 'orelys').pwnCount).toBe(152_445_165)
+    expect(toBreach({ name: 'X', pwnCount: 0 }, 'leakcheck').pwnCount).toBeNull()
+    expect(toBreach({ name: 'X', pwnCount: -5 }, 'leakcheck').pwnCount).toBeNull()
+    expect(toBreach({ name: 'X', pwnCount: 152_445_165 }, 'leakcheck').pwnCount).toBe(152_445_165)
   })
 })
 
@@ -72,8 +73,8 @@ describe('mergeBreaches', () => {
         ),
       ],
     })
-    const orelys = provider({
-      provider: 'orelys',
+    const leakcheck = provider({
+      provider: 'leakcheck',
       breaches: [
         toBreach(
           {
@@ -82,14 +83,14 @@ describe('mergeBreaches', () => {
             exposedData: ['Emails', 'Passwords'],
             description: 'Creative Cloud leak',
           },
-          'orelys',
+          'leakcheck',
         ),
       ],
     })
 
-    const merged = mergeBreaches([xon, orelys])
+    const merged = mergeBreaches([xon, leakcheck])
     expect(merged).toHaveLength(1)
-    expect(merged[0].sources).toEqual(['xposedornot', 'orelys'])
+    expect(merged[0].sources).toEqual(['xposedornot', 'leakcheck'])
     expect(merged[0].breachDate).toBe('2013-10-04') // most precise date wins
     expect(merged[0].domain).toBe('adobe.com')
     expect(merged[0].exposedData).toEqual(['Emails', 'Passwords'])
@@ -113,17 +114,17 @@ describe('mergeBreaches', () => {
 
   it('de-duplicates within a single provider as well', () => {
     const result = provider({
-      provider: 'orelys',
+      provider: 'leakcheck',
       breaches: [
-        toBreach({ name: 'Dropbox' }, 'orelys'),
-        toBreach({ name: 'Dropbox ' }, 'orelys'),
+        toBreach({ name: 'Dropbox' }, 'leakcheck'),
+        toBreach({ name: 'Dropbox ' }, 'leakcheck'),
       ],
     })
     expect(mergeBreaches([result])).toHaveLength(1)
   })
 
   it('skips providers that returned nothing', () => {
-    const empty = provider({ provider: 'orelys', status: 'unavailable', responded: false })
+    const empty = provider({ provider: 'leakcheck', status: 'unavailable', responded: false })
     expect(mergeBreaches([empty])).toEqual([])
   })
 })

@@ -8,7 +8,7 @@ import type { TranslationKey } from '@/i18n/fr'
 /** Provider prose is localised here; the server string is the fallback. */
 const COVERAGE_KEYS: Record<string, TranslationKey> = {
   xposedornot: 'provider.coverage.xposedornot',
-  orelys: 'provider.coverage.orelys',
+  leakcheck: 'provider.coverage.leakcheck',
 }
 import { loadProviders } from '@/services/providers'
 import { StatusDot } from './ui/Feedback'

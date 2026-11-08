@@ -113,10 +113,11 @@ export const en: Dictionary = {
   'search.type.email.description': 'Queries two breach indexes and merges the results.',
   'search.type.username.title': 'Username',
   'search.type.username.short': 'Username',
-  'search.type.username.description': 'No reliable public source for usernames in V1.',
+  'search.type.username.description': 'Real lookups through LeakCheck’s public API.',
   'search.type.phone.title': 'Phone number',
   'search.type.phone.short': 'Phone',
-  'search.type.phone.description': 'Validated international input, coverage in progress.',
+  'search.type.phone.description':
+    'Validated international input; no free API covers phone numbers.',
   'search.type.password.title': 'Password',
   'search.type.password.short': 'Password',
   'search.type.password.description':
@@ -139,11 +140,12 @@ export const en: Dictionary = {
   'email.page.sidebar.title': 'What we send',
   'email.page.sidebar.body': 'Your address leaves our server function for the named providers, for the duration of one request. It is never written to disk, never logged, and never echoed back to the browser.',
   'email.page.lede':
-    'We query XposedOrNot and Orelys, merge the results, remove duplicates and identify the source of every breach.',
+    'We query XposedOrNot and LeakCheck, merge the results, remove duplicates and identify the source of every breach.',
 
   /* ------------------------------------------------------------- results */
   'results.title': 'Check result',
   'results.for': 'Result for {email}',
+  'results.forUsername': 'Result for @{username}',
   'results.checkedAt': 'Checked on {date}',
   'results.state.clean.title': 'No match found',
   'results.state.clean.body':
@@ -181,8 +183,9 @@ export const en: Dictionary = {
   /* ------------------------------------------------------------ providers */
   'provider.coverage.xposedornot':
     'Open breach index covering thousands of publicly disclosed breaches. Free email endpoint, no key required.',
-  'provider.coverage.orelys':
-    'Secondary source queried alongside XposedOrNot so that a gap in one index does not become a false negative.',
+  'provider.coverage.leakcheck':
+    'Public API over 10B+ leaked records. Reports the breach sources and the categories of exposed data, never the data itself.',
+  'provider.categories': 'Exposed categories (aggregated for this query): {categories}',
   'provider.status.ok': 'Answered',
   'provider.status.not_found': 'Answered — no match',
   'provider.status.not_configured': 'Not configured',
@@ -308,31 +311,26 @@ export const en: Dictionary = {
   /* ------------------------------------------------------------- username */
   'username.page.title': 'Username check',
   'username.page.lede':
-    'Usernames mostly surface in forum and gaming leaks. Unlike email addresses, there is no universal public index linking them to verified breaches.',
+    'Usernames mostly surface in leaks from forums, games and consumer services. We query LeakCheck’s public API, which covers usernames as well as email addresses.',
+  'username.page.scope.title': 'Narrower coverage than email',
+  'username.page.scope.body':
+    'Only one source can search a username: no match means “nothing in that source”, never “nothing anywhere”.',
   'username.form.label': 'Username',
   'username.form.placeholder': 'username',
   'username.form.submit': 'Check',
-  'username.unavailable.title': 'Lookup unavailable in V1',
-  'username.unavailable.body':
-    'We would rather say so plainly than display an invented result: no free, universal source can currently verify a username reliably.',
-  'username.unavailable.reason1.title': 'No universal database',
-  'username.unavailable.reason1.body':
-    'Usernames are not normalised: the same name on two sites can be two different people. A global index would mostly produce false positives.',
-  'username.unavailable.reason2.title': 'No unauthorised scraping',
-  'username.unavailable.reason2.body':
-    'Some sites claim a “username found somewhere” by scraping sites without permission. We do not do that, and we do not display it.',
-  'username.unavailable.reason3.title': 'Architecture already in place',
-  'username.unavailable.reason3.body':
-    'The lookup provider is an isolated module, like XposedOrNot or Orelys. Plugging in a licensed source will not require touching the interface.',
-  'username.unavailable.result': 'No conclusion is drawn for “{username}”.',
-  'username.unavailable.next': 'To enable this feature',
-  'username.unavailable.nextBody':
-    'Declare a provider able to resolve usernames in netlify/lib/config.ts, implement its adapter, then register it. See the documentation.',
+  'username.form.hint': 'Letters, digits, dots, dashes and underscores.',
+  'username.form.minLength': 'At least {count} characters.',
+  'username.consent.title': 'What is sent',
+  'username.consent.body':
+    'The username is sent from our server function to {providers} for the duration of one request. It is never stored, never logged and never returned to the browser.',
+  'username.consent.checkbox': 'I agree to query {providers}.',
+  'username.consent.coverage':
+    'A username is not an identity: the same name on two sites can be two people. Treat every match as a lead, not a certainty.',
 
   /* ---------------------------------------------------------------- phone */
   'phone.page.title': 'Phone number check',
   'phone.page.lede':
-    'The number is validated in international format (E.164) before anything is sent. A reliable, free source covering phone numbers is not connected yet.',
+    'The number is validated in international format (E.164) before anything is sent. The sources we query reserve phone search for their paid plans.',
   'phone.form.label': 'Phone number',
   'phone.form.country': 'Country',
   'phone.form.placeholder': '6 12 34 56 78',
@@ -344,7 +342,7 @@ export const en: Dictionary = {
     'No connected provider can check a number. We therefore show neither “clean” nor a breach: both would be inventions.',
   'phone.unavailable.reason1.title': 'No reliable free source',
   'phone.unavailable.reason1.body':
-    'Databases covering phone numbers are commercial and licensed. The few free services are opaque about where their data comes from.',
+    'Phone search exists at our providers, but only behind a paid plan. No free, verifiable API covers it today.',
   'phone.unavailable.reason2.title': 'A number is not an identity',
   'phone.unavailable.reason2.body':
     'A number recycled by a carrier may have belonged to someone else. A raw match would be misleading without context.',
@@ -413,7 +411,7 @@ export const en: Dictionary = {
     'A React/TypeScript app, Netlify Functions on the server, and one adapter per provider. API keys stay server-side; the browser only talks to our own API, except for the password check where the range request goes straight to the range API.',
   'about.limits.title': 'Accepted limits',
   'about.limits.body':
-    'Username and phone lookups are unavailable in V1 for lack of a reliable, lawful source. Address checking depends on XposedOrNot and Orelys being up. Passwords are never transmitted, but the range API does see the partial digest and your IP address.',
+    'Username lookups rely on a single free source, so their coverage is narrower than for email addresses; phone lookups remain unavailable for lack of a free API. Address checking depends on XposedOrNot and LeakCheck being up. Passwords are never transmitted, but the range API does see the partial digest and your IP address.',
   'about.stack.title': 'Technical',
   'about.stack.body':
     'React 19, TypeScript, Vite, Tailwind CSS, Lucide icons, Netlify Functions. No database, no accounts, no trackers.',
@@ -436,9 +434,9 @@ export const en: Dictionary = {
     'We create no account, set no audience-measurement cookie, use no Google Analytics or equivalent, and do not retain the addresses you search. There is therefore no database in which we could link you to anything.',
   'privacy.s2.title': 'What is sent to the providers',
   'privacy.s2.body':
-    'When you run an address check and consent to it, your address is sent to XposedOrNot and then to Orelys (if configured), from our server function. Those providers are independent third parties: they see the address, the IP address of our function, and apply their own retention policy. We cannot guarantee the anonymity of that transmission.',
+    'When you run a check and consent to it, the address or username is sent to XposedOrNot (addresses) and to LeakCheck from our server function. Those providers are independent third parties: they see the value you searched, the IP address of our function, and apply their own retention policy. We cannot guarantee the anonymity of that transmission.',
   'privacy.s2.xon': 'XposedOrNot — privacy policy',
-  'privacy.s2.orelys': 'Orelys — terms and privacy',
+  'privacy.s2.leakcheck': 'LeakCheck — terms and privacy',
   'privacy.s3.title': 'Passwords',
   'privacy.s3.body':
     'The password is SHA-1 hashed in your browser. Only the first five characters of the digest are sent to the Have I Been Pwned range API, which returns several hundred digests. The final comparison happens locally. The password and the full digest are never stored, logged or transmitted. The field is cleared after the check.',
@@ -475,12 +473,13 @@ export const en: Dictionary = {
   'docs.api.breachStats':
     'GET — public aggregates (breach count, exposed accounts) from the XposedOrNot index.',
   'docs.env.title': 'Environment variables',
-  'docs.env.orelys': 'ORELYS_API_KEY — enables the Orelys provider. Without it the source is reported “not configured” and results are incomplete.',
-  'docs.env.orelysHeader': 'ORELYS_API_KEY_HEADER / ORELYS_API_KEY_PREFIX — optional, if your plan documents a different authentication header.',
-  'docs.env.none': 'No other variable is required. XposedOrNot and HIBP Pwned Passwords are reachable without a key.',
+  'docs.env.none':
+    'No API key is needed: XposedOrNot, LeakCheck and HIBP Pwned Passwords are all queried without authentication. The deployment works as-is.',
+  'docs.env.node': 'NODE_VERSION — pinned to 22 in netlify.toml. No other setting is required.',
+  'docs.env.noneShort': 'No API key required',
   'docs.deploy.title': 'Deployment',
   'docs.deploy.body':
-    'Connect the repository to Netlify: the netlify.toml configuration (build, publish directory, functions, redirects, headers) applies automatically. Add ORELYS_API_KEY to the site environment variables, then redeploy.',
+    'Connect the repository to Netlify: the netlify.toml configuration (build, publish directory, functions, redirects, headers) applies automatically. Vercel is supported too, through vercel.json and the api/ directory. No environment variable is required.',
   'docs.limits.title': 'Limits and abuse',
   'docs.limits.body':
     'Rate limiting is in-memory, per function instance. For fleet-wide protection, add a Netlify rate-limit rule or a shared counter (Netlify Blobs, Upstash) in front of the check function.',

@@ -60,12 +60,12 @@ export function Privacy() {
                   </li>
                   <li>
                     <a
-                      href="https://orelys.io/terms"
+                      href="https://docs.leakcheck.io/public-api/lookup"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="link"
                     >
-                      {t('privacy.s2.orelys')} ↗
+                      {t('privacy.s2.leakcheck')} ↗
                     </a>
                   </li>
                   <li>

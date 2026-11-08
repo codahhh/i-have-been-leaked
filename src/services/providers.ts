@@ -30,8 +30,10 @@ function parseProviders(payload: unknown): ProvidersResponse {
   return {
     ...candidate,
     emailProviders: Array.isArray(candidate.emailProviders) ? candidate.emailProviders : [],
-    usernameProviders: [],
-    phoneProviders: [],
+    usernameProviders: Array.isArray(candidate.usernameProviders)
+      ? candidate.usernameProviders
+      : [],
+    phoneProviders: Array.isArray(candidate.phoneProviders) ? candidate.phoneProviders : [],
   }
 }
 

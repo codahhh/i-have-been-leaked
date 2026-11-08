@@ -45,8 +45,13 @@ export function About() {
                 </a>
               </li>
               <li>
-                <a href="https://orelys.io" target="_blank" rel="noopener noreferrer" className="link">
-                  Orelys
+                <a
+                  href="https://leakcheck.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link"
+                >
+                  LeakCheck
                 </a>
               </li>
               <li>

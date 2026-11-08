@@ -1,5 +1,6 @@
 import { Link, Navigate } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, CheckCircle2, ShieldQuestion } from 'lucide-react'
+import type { LookupKind } from '@/types'
 import { useI18n } from '@/i18n'
 import { useResults } from '@/state/ResultsContext'
 import { ResultsSummary } from '@/components/ResultsSummary'
@@ -7,32 +8,47 @@ import { BreachResultCard } from '@/components/BreachResultCard'
 import { ProviderStatus } from '@/components/ProviderStatus'
 import { SecurityRecommendations } from '@/components/SecurityRecommendations'
 
-export function EmailResults() {
+const CHECKER_PATH: Record<LookupKind, string> = {
+  email: '/check/email',
+  username: '/check/username',
+}
+
+/**
+ * Shared results view for every identifier kind.
+ *
+ * The verdict, the provider report and the advice are identical for an email
+ * and a username — what changes is the label of the thing that was checked.
+ */
+export function Results({ kind }: { kind: LookupKind }) {
   const { t, tp } = useI18n()
-  const { emailResult } = useResults()
+  const { getResult } = useResults()
+  const stored = getResult(kind)
 
   // Results only exist in memory: a reload sends the user back to the form
   // rather than restoring anything from storage.
-  if (!emailResult) return <Navigate to="/check/email" replace />
+  if (!stored) return <Navigate to={CHECKER_PATH[kind]} replace />
 
-  const { email, result } = emailResult
+  const { identifier, result } = stored
   const hasBreaches = result.breaches.length > 0
 
   return (
     <div className="shell">
       <div className="flex flex-wrap items-center justify-between gap-3 pb-2 pt-8">
         <Link
-          to="/check/email"
+          to={CHECKER_PATH[kind]}
           className="group inline-flex items-center gap-1.5 text-[12.5px] text-muted transition-colors hover:text-ink"
         >
-          <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" aria-hidden />
+          <ArrowLeft
+            className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5"
+            aria-hidden
+          />
           {t('common.newCheck')}
         </Link>
         <p className="eyebrow">{t('results.title')}</p>
       </div>
 
       <div className="pt-6">
-        <ResultsSummary result={result} email={email} />
+        <ResultsSummary result={result} identifier={identifier} kind={kind} />
       </div>
 
       <div className="mt-8 grid gap-8 pb-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:gap-12">
@@ -81,7 +97,6 @@ export function EmailResults() {
               </div>
             </div>
           )}
-
         </div>
 
         <aside>
@@ -89,9 +104,7 @@ export function EmailResults() {
             <h2 className="text-[15px] font-semibold tracking-tight text-ink">
               {t('results.providers.title')}
             </h2>
-            <p className="mt-2 text-[12px] leading-5 text-faint">
-              {t('results.providers.legend')}
-            </p>
+            <p className="mt-2 text-[12px] leading-5 text-faint">{t('results.providers.legend')}</p>
             <ProviderStatus providers={result.providers} className="mt-4" />
           </div>
         </aside>

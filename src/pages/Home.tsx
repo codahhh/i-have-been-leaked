@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Lock, Server, UserX } from 'lucide-react'
-import type { EmailCheckResponse } from '@/types'
+import type { CheckResponse } from '@/types'
 import { useI18n } from '@/i18n'
 import { useResults } from '@/state/ResultsContext'
 import { HighlightedText } from '@/utils/highlight'
@@ -25,15 +25,23 @@ const STEPS = [
 export function Home() {
   const { t } = useI18n()
   const navigate = useNavigate()
-  const { setEmailResult } = useResults()
+  const { setResult } = useResults()
   const [type, setType] = useState<SearchType>('email')
 
   const handleEmailResult = useCallback(
-    (email: string, result: EmailCheckResponse) => {
-      setEmailResult({ email, result })
+    (email: string, result: CheckResponse) => {
+      setResult('email', { identifier: email, result })
       navigate('/check/email/results')
     },
-    [navigate, setEmailResult],
+    [navigate, setResult],
+  )
+
+  const handleUsernameResult = useCallback(
+    (username: string, result: CheckResponse) => {
+      setResult('username', { identifier: username, result })
+      navigate('/check/username/results')
+    },
+    [navigate, setResult],
   )
 
   const activeType = SEARCH_TYPES.find((item) => item.id === type)
@@ -86,7 +94,9 @@ export function Home() {
                   <EmailSearchForm onResult={handleEmailResult} variant="compact" />
                 ) : null}
                 {type === 'password' ? <PasswordSearchForm compact /> : null}
-                {type === 'username' ? <UsernameSearchForm compact /> : null}
+                {type === 'username' ? (
+                  <UsernameSearchForm onResult={handleUsernameResult} variant="compact" />
+                ) : null}
                 {type === 'phone' ? <PhoneSearchForm compact /> : null}
               </div>
             </div>

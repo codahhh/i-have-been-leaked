@@ -67,6 +67,16 @@ export function ProviderStatus({
               ) : null}
             </div>
 
+            {/* LeakCheck reports data categories once for the whole query,
+                never per breach — labelled as such so it is not misread. */}
+            {provider.exposedCategories.length > 0 ? (
+              <p className="pl-5 text-[11.5px] leading-5 text-faint">
+                {t('provider.categories', {
+                  categories: provider.exposedCategories.join(' · '),
+                })}
+              </p>
+            ) : null}
+
             {provider.error ? (
               <details className="group pl-5">
                 <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-[12px] text-faint transition-colors hover:text-muted">

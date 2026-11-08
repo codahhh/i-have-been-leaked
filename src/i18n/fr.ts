@@ -115,10 +115,11 @@ export const fr = {
   'search.type.email.description': 'Interroge deux index de fuites et fusionne les résultats.',
   'search.type.username.title': 'Nom d’utilisateur',
   'search.type.username.short': 'Pseudo',
-  'search.type.username.description': 'Aucune source publique fiable pour les pseudos en V1.',
+  'search.type.username.description': 'Recherche réelle via l’API publique de LeakCheck.',
   'search.type.phone.title': 'Numéro de téléphone',
   'search.type.phone.short': 'Téléphone',
-  'search.type.phone.description': 'Saisie internationale validée, couverture en cours.',
+  'search.type.phone.description':
+    'Saisie internationale validée ; aucune API gratuite ne couvre les numéros.',
   'search.type.password.title': 'Mot de passe',
   'search.type.password.short': 'Mot de passe',
   'search.type.password.description':
@@ -141,11 +142,12 @@ export const fr = {
   'email.page.sidebar.title': 'Ce que nous envoyons',
   'email.page.sidebar.body': 'Votre adresse part depuis notre fonction serveur vers les fournisseurs nommés, le temps d’une requête. Elle n’est ni écrite sur disque, ni journalisée, ni renvoyée au navigateur.',
   'email.page.lede':
-    'Nous interrogeons XposedOrNot et Orelys, fusionnons les résultats, retirons les doublons et identifions la source de chaque fuite.',
+    'Nous interrogeons XposedOrNot et LeakCheck, fusionnons les résultats, retirons les doublons et identifions la source de chaque fuite.',
 
   /* ------------------------------------------------------------- results */
   'results.title': 'Résultat de la vérification',
   'results.for': 'Résultat pour {email}',
+  'results.forUsername': 'Résultat pour @{username}',
   'results.checkedAt': 'Vérifié le {date}',
   'results.state.clean.title': 'Aucune correspondance trouvée',
   'results.state.clean.body':
@@ -183,8 +185,9 @@ export const fr = {
   /* ------------------------------------------------------------ providers */
   'provider.coverage.xposedornot':
     'Index de fuites public couvrant des milliers de fuites divulguées. Endpoint e-mail gratuit, sans clé.',
-  'provider.coverage.orelys':
-    'Source secondaire interrogée en parallèle de XposedOrNot : une lacune dans un index ne doit pas devenir un faux négatif.',
+  'provider.coverage.leakcheck':
+    'API publique sur plus de 10 milliards de données fuitées. Indique les sources et les catégories exposées, jamais les données elles-mêmes.',
+  'provider.categories': 'Catégories exposées (agrégées pour cette requête) : {categories}',
   'provider.status.ok': 'A répondu',
   'provider.status.not_found': 'A répondu — aucune correspondance',
   'provider.status.not_configured': 'Non configurée',
@@ -310,31 +313,26 @@ export const fr = {
   /* ------------------------------------------------------------- username */
   'username.page.title': 'Vérification de nom d’utilisateur',
   'username.page.lede':
-    'Les pseudos circulent surtout dans des fuites de forums et de jeux. Contrairement aux adresses e-mail, il n’existe pas d’index public universel pour les rattacher à des fuites vérifiées.',
+    'Les pseudos apparaissent surtout dans des fuites de forums, de jeux et de services grand public. Nous interrogeons l’API publique de LeakCheck, qui couvre les pseudos comme les adresses e-mail.',
+  'username.page.scope.title': 'Une couverture plus étroite que l’e-mail',
+  'username.page.scope.body':
+    'Une seule source sait chercher un pseudo : une absence de correspondance signifie « rien dans cette source », jamais « rien nulle part ».',
   'username.form.label': 'Nom d’utilisateur',
   'username.form.placeholder': 'pseudo',
   'username.form.submit': 'Vérifier',
-  'username.unavailable.title': 'Recherche indisponible en V1',
-  'username.unavailable.body':
-    'Nous préférons vous le dire clairement plutôt que d’afficher un résultat inventé : aucune source gratuite et universelle ne permet aujourd’hui de vérifier un pseudo de façon fiable.',
-  'username.unavailable.reason1.title': 'Pas de base universelle',
-  'username.unavailable.reason1.body':
-    'Les pseudos ne sont pas normalisés : le même nom sur deux sites désigne deux personnes différentes. Un index global produirait surtout des faux positifs.',
-  'username.unavailable.reason2.title': 'Pas d’aspiration sauvage',
-  'username.unavailable.reason2.body':
-    'Certains sites proposent un « nom d’utilisateur trouvé quelque part » en aspirant des sites sans autorisation. Nous ne le faisons pas, ni ne l’affichons.',
-  'username.unavailable.reason3.title': 'Architecture déjà prête',
-  'username.unavailable.reason3.body':
-    'Le fournisseur de recherche est un module isolé, comme XposedOrNot ou Orelys. Brancher une source sous licence suffira, sans toucher à l’interface.',
-  'username.unavailable.result': 'Aucune conclusion n’est tirée pour « {username} ».',
-  'username.unavailable.next': 'Pour activer cette fonction',
-  'username.unavailable.nextBody':
-    'Déclarer un fournisseur capable de résoudre les pseudos dans netlify/lib/config.ts, implémenter son adaptateur, puis l’ajouter à la liste des sources. Voir la documentation.',
+  'username.form.hint': 'Lettres, chiffres, points, tirets et tirets bas.',
+  'username.form.minLength': 'Au moins {count} caractères.',
+  'username.consent.title': 'Ce qui est envoyé',
+  'username.consent.body':
+    'Le pseudo est transmis depuis notre fonction serveur à {providers}, le temps d’une requête. Il n’est ni enregistré, ni journalisé, ni renvoyé au navigateur.',
+  'username.consent.checkbox': 'J’accepte l’interrogation de {providers}.',
+  'username.consent.coverage':
+    'Un pseudo n’est pas une identité : le même nom sur deux sites peut désigner deux personnes. Les correspondances sont à interpréter avec prudence.',
 
   /* ---------------------------------------------------------------- phone */
   'phone.page.title': 'Vérification de numéro de téléphone',
   'phone.page.lede':
-    'Le numéro est validé au format international (E.164) avant tout envoi. Une source fiable et gratuite couvrant les numéros n’est pas encore branchée.',
+    'Le numéro est validé au format international (E.164) avant tout envoi. Les sources que nous interrogeons réservent la recherche par numéro à leurs offres payantes.',
   'phone.form.label': 'Numéro de téléphone',
   'phone.form.country': 'Pays',
   'phone.form.placeholder': '6 12 34 56 78',
@@ -346,7 +344,7 @@ export const fr = {
     'Aucun fournisseur branché ne permet de vérifier un numéro. Nous n’affichons donc ni « propre » ni fuite : les deux seraient des inventions.',
   'phone.unavailable.reason1.title': 'Pas de source gratuite fiable',
   'phone.unavailable.reason1.body':
-    'Les bases couvrant les numéros sont commerciales et sous licence. Les rares services gratuits sont opaques sur leur provenance de données.',
+    'La recherche par numéro existe bien chez nos fournisseurs, mais uniquement derrière une offre payante. Aucune API gratuite et vérifiable ne la couvre aujourd’hui.',
   'phone.unavailable.reason2.title': 'Un numéro n’est pas une identité',
   'phone.unavailable.reason2.body':
     'Un numéro recyclé par un opérateur peut avoir appartenu à quelqu’un d’autre. Une correspondance brute serait trompeuse sans contexte.',
@@ -415,7 +413,7 @@ export const fr = {
     'Une application React/TypeScript, des fonctions Netlify côté serveur, et un adaptateur par fournisseur. Les clés d’API restent sur le serveur ; le navigateur ne dialogue qu’avec notre propre API, sauf pour la vérification de mot de passe où l’appel part directement vers l’API de plages.',
   'about.limits.title': 'Limites assumées',
   'about.limits.body':
-    'Les recherches par pseudo et par numéro ne sont pas disponibles en V1 faute de source fiable et licite. La vérification d’adresse dépend de la disponibilité de XposedOrNot et d’Orelys. Les mots de passe ne sont jamais transmis, mais l’API de plages voit l’empreinte partielle et votre adresse IP.',
+    'Les recherches par pseudo reposent sur une seule source gratuite, donc sur une couverture plus étroite que les adresses e-mail ; les recherches par numéro restent indisponibles faute d’API gratuite. La vérification d’adresse dépend de la disponibilité de XposedOrNot et de LeakCheck. Les mots de passe ne sont jamais transmis, mais l’API de plages voit l’empreinte partielle et votre adresse IP.',
   'about.stack.title': 'Technique',
   'about.stack.body':
     'React 19, TypeScript, Vite, Tailwind CSS, icônes Lucide, fonctions Netlify. Aucune base de données, aucun compte, aucun traqueur.',
@@ -438,9 +436,9 @@ export const fr = {
     'Nous ne créons pas de compte, ne posons pas de cookie de mesure d’audience, n’utilisons ni Google Analytics ni équivalent, et ne conservons pas les adresses recherchées. Il n’existe donc aucune base à laquelle nous pourrions vous rattacher.',
   'privacy.s2.title': 'Ce qui est transmis aux fournisseurs',
   'privacy.s2.body':
-    'Lorsque vous lancez une vérification d’adresse et que vous y consentez, votre adresse est envoyée à XposedOrNot puis à Orelys (si configuré), depuis notre fonction serveur. Ces fournisseurs sont des tiers indépendants : ils voient l’adresse, l’adresse IP de notre fonction, et appliquent leur propre politique de conservation. Nous ne pouvons pas garantir l’anonymat de cette transmission.',
+    'Lorsque vous lancez une vérification et que vous y consentez, l’adresse ou le pseudo est envoyé à XposedOrNot (adresses) et à LeakCheck depuis notre fonction serveur. Ces fournisseurs sont des tiers indépendants : ils voient la valeur recherchée, l’adresse IP de notre fonction, et appliquent leur propre politique de conservation. Nous ne pouvons pas garantir l’anonymat de cette transmission.',
   'privacy.s2.xon': 'XposedOrNot — politique de confidentialité',
-  'privacy.s2.orelys': 'Orelys — conditions et confidentialité',
+  'privacy.s2.leakcheck': 'LeakCheck — conditions et confidentialité',
   'privacy.s3.title': 'Mots de passe',
   'privacy.s3.body':
     'Le mot de passe est haché en SHA-1 dans votre navigateur. Seuls les cinq premiers caractères de l’empreinte sont envoyés à l’API de plages de Have I Been Pwned, qui renvoie plusieurs centaines d’empreintes. La comparaison finale a lieu localement. Le mot de passe et l’empreinte complète ne sont ni stockés, ni journalisés, ni transmis. Le champ est vidé après la vérification.',
@@ -477,12 +475,13 @@ export const fr = {
   'docs.api.breachStats':
     'GET — agrégats publics (nombre de fuites, comptes exposés) issus de l’index XposedOrNot.',
   'docs.env.title': 'Variables d’environnement',
-  'docs.env.orelys': 'ORELYS_API_KEY — active le fournisseur Orelys. Sans elle, la source est signalée « non configurée » et les résultats sont incomplets.',
-  'docs.env.orelysHeader': 'ORELYS_API_KEY_HEADER / ORELYS_API_KEY_PREFIX — facultatif, si votre plan documente un autre en-tête d’authentification.',
-  'docs.env.none': 'Aucune autre variable n’est requise. XposedOrNot et HIBP Pwned Passwords sont accessibles sans clé.',
+  'docs.env.none':
+    'Aucune clé d’API n’est nécessaire : XposedOrNot, LeakCheck et HIBP Pwned Passwords sont interrogés sans authentification. Le déploiement fonctionne tel quel.',
+  'docs.env.node': 'NODE_VERSION — fixée à 22 dans netlify.toml. Aucun autre réglage n’est requis.',
+  'docs.env.noneShort': 'Aucune clé d’API requise',
   'docs.deploy.title': 'Déploiement',
   'docs.deploy.body':
-    'Reliez le dépôt à Netlify : la configuration de netlify.toml (build, dossier de publication, fonctions, redirections, en-têtes) s’applique automatiquement. Ajoutez ORELYS_API_KEY dans les variables d’environnement du site, puis redéployez.',
+    'Reliez le dépôt à Netlify : la configuration de netlify.toml (build, dossier de publication, fonctions, redirections, en-têtes) s’applique automatiquement. Vercel est également pris en charge via vercel.json et le dossier api/. Aucune variable d’environnement n’est nécessaire.',
   'docs.limits.title': 'Limites et abus',
   'docs.limits.body':
     'La limitation de débit est en mémoire, par instance de fonction. Pour une protection à l’échelle du parc, ajoutez une règle de limitation Netlify ou un compteur partagé (Netlify Blobs, Upstash) devant la fonction de vérification.',

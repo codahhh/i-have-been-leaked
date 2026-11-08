@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { webcrypto } from 'node:crypto'
 import type { ReactNode } from 'react'
-import type { EmailCheckResponse, NormalizedBreach, ProviderResult } from '@/types'
+import type { CheckResponse, NormalizedBreach, ProviderResult } from '@/types'
 import { I18nProvider } from '@/i18n'
 import { ResultsProvider } from '@/state/ResultsContext'
 import { Home } from '@/pages/Home'
@@ -29,19 +29,21 @@ const PROVIDERS_PAYLOAD = {
       lookups: ['email'],
       configured: true,
       activeForEmail: true,
+      activeForUsername: false,
     },
     {
-      id: 'orelys',
-      displayName: 'Orelys',
-      coverage: 'Secondary source.',
-      homepage: 'https://orelys.io',
-      lookups: ['email'],
-      configured: false,
+      id: 'leakcheck',
+      displayName: 'LeakCheck',
+      coverage: 'Public API over leaked records.',
+      homepage: 'https://leakcheck.io',
+      lookups: ['email', 'username'],
+      configured: true,
       activeForEmail: true,
+      activeForUsername: true,
     },
   ],
-  emailProviders: ['xposedornot'],
-  usernameProviders: [],
+  emailProviders: ['xposedornot', 'leakcheck'],
+  usernameProviders: ['leakcheck'],
   phoneProviders: [],
   passwordRangeAvailable: true,
 }
@@ -53,6 +55,7 @@ function providerResult(overrides: Partial<ProviderResult> = {}): ProviderResult
     status: 'ok',
     responded: true,
     breaches: [],
+    exposedCategories: [],
     error: null,
     queriedAt: '2026-11-08T10:00:00.000Z',
     durationMs: 412,
@@ -72,14 +75,21 @@ const ADOBE: NormalizedBreach = {
   pwnCount: 152_445_165,
 }
 
-function emailResponse(overrides: Partial<EmailCheckResponse> = {}): EmailCheckResponse {
+function emailResponse(overrides: Partial<CheckResponse> = {}): CheckResponse {
   return {
+    kind: 'email',
     ok: true,
     state: 'clean',
     checkedAt: '2026-11-08T10:00:00.000Z',
     totalBreaches: 0,
     breaches: [],
-    providers: [providerResult(), providerResult({ provider: 'orelys', status: 'not_configured', responded: false })],
+    providers: [providerResult(), providerResult({
+        provider: 'leakcheck',
+        displayName: 'LeakCheck',
+        status: 'unavailable',
+        responded: false,
+        error: { code: 'provider_error', detail: 'HTTP 503', retryAfterSeconds: null },
+      })],
     respondingProviders: 1,
     totalProviders: 2,
     durationMs: 1200,
@@ -98,7 +108,7 @@ function stubFetch(handler: FetchHandler) {
 }
 
 /** Default backend: capability matrix + a clean email verdict. */
-function stubBackend(emailResponseOverride?: EmailCheckResponse) {
+function stubBackend(emailResponseOverride?: CheckResponse) {
   return stubFetch((url) => {
     if (url.includes('/api/providers')) {
       return new Response(JSON.stringify(PROVIDERS_PAYLOAD), { status: 200 })
@@ -247,7 +257,7 @@ describe('Email form', () => {
     )
 
     // Disclosed twice on purpose: explanatory paragraph + consent checkbox.
-    expect(screen.getAllByText(/XposedOrNot et Orelys/).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/XposedOrNot et LeakCheck/).length).toBeGreaterThanOrEqual(1)
 
     await user.type(screen.getByLabelText('Adresse e-mail'), 'User@Example.com ')
     await user.click(screen.getByRole('checkbox'))
@@ -401,7 +411,7 @@ describe('Results summary states', () => {
   it.each(cases)('$name', ({ result, expected, state }) => {
     const { container } = render(
       <Providers>
-        <ResultsSummary result={result} email="user@example.com" />
+        <ResultsSummary kind="email" identifier="user@example.com" result={result} />
       </Providers>,
     )
 
@@ -412,7 +422,11 @@ describe('Results summary states', () => {
   it('reports how many sources actually answered', () => {
     render(
       <Providers>
-        <ResultsSummary result={emailResponse({ respondingProviders: 1, totalProviders: 2 })} email="a@b.co" />
+        <ResultsSummary
+          kind="email"
+          identifier="a@b.co"
+          result={emailResponse({ respondingProviders: 1, totalProviders: 2 })}
+        />
       </Providers>,
     )
     expect(screen.getByText('1/2')).toBeInTheDocument()
@@ -451,7 +465,13 @@ describe('Application shell', () => {
         breaches: [ADOBE],
         providers: [
           providerResult({ breaches: [ADOBE] }),
-          providerResult({ provider: 'orelys', status: 'not_configured', responded: false }),
+          providerResult({
+        provider: 'leakcheck',
+        displayName: 'LeakCheck',
+        status: 'unavailable',
+        responded: false,
+        error: { code: 'provider_error', detail: 'HTTP 503', retryAfterSeconds: null },
+      }),
         ],
       }),
     )
@@ -475,7 +495,7 @@ describe('Application shell', () => {
 
     // Provider transparency and recommendations are present.
     expect(screen.getByText('État des sources')).toBeInTheDocument()
-    expect(screen.getByText('Non configurée')).toBeInTheDocument()
+    expect(screen.getByText('Indisponible')).toBeInTheDocument()
     expect(screen.getByText('Changez les mots de passe concernés')).toBeInTheDocument()
     expect(screen.getByText('Mots de passe')).toBeInTheDocument() // exposed-data pill
   })

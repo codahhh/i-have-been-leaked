@@ -10,8 +10,13 @@
 /*  Providers                                                                 */
 /* -------------------------------------------------------------------------- */
 
-/** Stable identifiers for every breach-intelligence provider we know about. */
-export type ProviderId = 'xposedornot' | 'orelys'
+/**
+ * Stable identifiers for every breach-intelligence provider we know about.
+ *
+ * Both providers below are queried over documented, keyless, free endpoints —
+ * a deployment needs no environment variables to be fully functional.
+ */
+export type ProviderId = 'xposedornot' | 'leakcheck'
 
 /**
  * Outcome of a single provider query.
@@ -79,6 +84,12 @@ export interface ProviderResult {
   /** True only when the provider gave a usable answer (ok or not_found). */
   responded: boolean
   breaches: NormalizedBreach[]
+  /**
+   * Data categories the provider reports for this query, when it only exposes
+   * them at the query level (LeakCheck reports one aggregate list rather than
+   * one list per source). Rendered as such — never attributed per breach.
+   */
+  exposedCategories: string[]
   error: ProviderError | null
   /** ISO timestamp of when the query was sent. */
   queriedAt: string
@@ -100,7 +111,12 @@ export type LookupState =
   /** Nothing useful could be established. Never presented as "safe". */
   | 'error'
 
-export interface EmailCheckResponse {
+/** Lookup kinds that have a real, working data source. */
+export type LookupKind = 'email' | 'username'
+
+export interface CheckResponse {
+  /** Which checker produced this result. */
+  kind: LookupKind
   ok: boolean
   state: LookupState
   checkedAt: string
@@ -117,6 +133,7 @@ export interface EmailCheckResponse {
 export interface ApiError {
   code:
     | 'invalid_email'
+    | 'invalid_username'
     | 'invalid_request'
     | 'consent_required'
     | 'rate_limited'
@@ -154,15 +171,20 @@ export interface ProviderCapabilityEntry {
   configured: boolean
   /** Whether this provider is queried by the email checker right now. */
   activeForEmail: boolean
+  /** Whether this provider is queried by the username checker right now. */
+  activeForUsername: boolean
 }
 
 export interface ProvidersResponse {
   providers: ProviderCapabilityEntry[]
   /** Providers currently able to answer an email lookup. */
   emailProviders: ProviderId[]
-  /** Providers able to answer a username lookup. Empty in V1. */
+  /** Providers able to answer a username lookup. */
   usernameProviders: ProviderId[]
-  /** Providers able to answer a phone lookup. Empty in V1. */
+  /**
+   * Providers able to answer a phone lookup. Still empty: the free tiers we
+   * use do not expose phone search (LeakCheck reserves it for paid plans).
+   */
   phoneProviders: ProviderId[]
   /** True when the Pwned Passwords range API is reachable server-side. */
   passwordRangeAvailable: boolean

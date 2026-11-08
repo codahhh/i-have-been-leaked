@@ -19,7 +19,8 @@ const RESOURCES: Array<{ to: string; key: TranslationKey }> = [
 
 const SOURCES = [
   { href: 'https://xposedornot.com', label: 'XposedOrNot' },
-  { href: 'https://orelys.io', label: 'Orelys' },
+  // Attribution required by LeakCheck's public API terms.
+  { href: 'https://leakcheck.io', label: 'Powered by LeakCheck' },
   { href: 'https://haveibeenpwned.com/Passwords', label: 'HIBP · Pwned Passwords' },
 ]
 

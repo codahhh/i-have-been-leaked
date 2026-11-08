@@ -1,15 +1,16 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
-import type { EmailCheckResponse } from '@/types'
+import type { CheckResponse, LookupKind } from '@/types'
 
-export interface EmailResultState {
-  email: string
-  result: EmailCheckResponse
+/** The identifier the visitor submitted, plus the verdict for it. */
+export interface LookupResultState {
+  identifier: string
+  result: CheckResponse
 }
 
 interface ResultsContextValue {
-  emailResult: EmailResultState | null
-  setEmailResult: (value: EmailResultState) => void
-  clearEmailResult: () => void
+  getResult: (kind: LookupKind) => LookupResultState | null
+  setResult: (kind: LookupKind, value: LookupResultState) => void
+  clearResult: (kind: LookupKind) => void
 }
 
 const ResultsContext = createContext<ResultsContextValue | null>(null)
@@ -22,14 +23,24 @@ const ResultsContext = createContext<ResultsContextValue | null>(null)
  * is exactly the intended behaviour for personal search data.
  */
 export function ResultsProvider({ children }: { children: ReactNode }) {
-  const [emailResult, setValue] = useState<EmailResultState | null>(null)
+  const [results, setResults] = useState<Record<LookupKind, LookupResultState | null>>({
+    email: null,
+    username: null,
+  })
 
-  const setEmailResult = useCallback((value: EmailResultState) => setValue(value), [])
-  const clearEmailResult = useCallback(() => setValue(null), [])
+  const setResult = useCallback((kind: LookupKind, value: LookupResultState) => {
+    setResults((current) => ({ ...current, [kind]: value }))
+  }, [])
+
+  const clearResult = useCallback((kind: LookupKind) => {
+    setResults((current) => ({ ...current, [kind]: null }))
+  }, [])
+
+  const getResult = useCallback((kind: LookupKind) => results[kind], [results])
 
   const value = useMemo(
-    () => ({ emailResult, setEmailResult, clearEmailResult }),
-    [emailResult, setEmailResult, clearEmailResult],
+    () => ({ getResult, setResult, clearResult }),
+    [getResult, setResult, clearResult],
   )
 
   return <ResultsContext.Provider value={value}>{children}</ResultsContext.Provider>

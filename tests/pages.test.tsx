@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 import { I18nProvider } from '@/i18n'
 import { ResultsProvider } from '@/state/ResultsContext'
 import { EmailChecker } from '@/pages/EmailChecker'
-import { EmailResults } from '@/pages/EmailResults'
+import { Results } from '@/pages/Results'
 import { UsernameChecker } from '@/pages/UsernameChecker'
 import { PhoneChecker } from '@/pages/PhoneChecker'
 import { PasswordChecker } from '@/pages/PasswordChecker'
@@ -15,7 +15,7 @@ import { Documentation } from '@/pages/Documentation'
 import { NotFound } from '@/pages/NotFound'
 import { SecurityRecommendations } from '@/components/SecurityRecommendations'
 import { ProviderStatus } from '@/components/ProviderStatus'
-import type { EmailCheckResponse, ProviderResult } from '@/types'
+import type { CheckResponse, ProviderResult } from '@/types'
 
 function Providers({ children }: { children: ReactNode }) {
   return (
@@ -43,10 +43,21 @@ beforeEach(() => {
                 lookups: ['email'],
                 configured: true,
                 activeForEmail: true,
+                activeForUsername: false,
+              },
+              {
+                id: 'leakcheck',
+                displayName: 'LeakCheck',
+                coverage: 'Public API over leaked records.',
+                homepage: 'https://leakcheck.io',
+                lookups: ['email', 'username'],
+                configured: true,
+                activeForEmail: true,
+                activeForUsername: true,
               },
             ],
-            emailProviders: ['xposedornot'],
-            usernameProviders: [],
+            emailProviders: ['xposedornot', 'leakcheck'],
+            usernameProviders: ['leakcheck'],
             phoneProviders: [],
             passwordRangeAvailable: true,
           }),
@@ -74,7 +85,7 @@ describe('checker pages', () => {
     expect(screen.getByText('Avant l’envoi : qui reçoit votre adresse ?')).toBeInTheDocument()
   })
 
-  it('renders the username checker with an explicit unavailable state', () => {
+  it('renders the username checker with its disclosure', () => {
     render(
       <Providers>
         <UsernameChecker />
@@ -83,12 +94,14 @@ describe('checker pages', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'Vérification de nom d’utilisateur',
     )
-    expect(screen.getByText('Recherche indisponible en V1')).toBeInTheDocument()
-    expect(screen.getByText('Non disponible')).toBeInTheDocument()
+    expect(screen.getByText('Ce qui est envoyé')).toBeInTheDocument()
+    // Coverage is narrower than for email addresses, and that is stated.
+    expect(screen.getByText('Une couverture plus étroite que l’e-mail')).toBeInTheDocument()
   })
 
-  it('validates a username and refuses to invent a result', async () => {
+  it('validates a username before querying anything', async () => {
     const user = userEvent.setup()
+    const fetchSpy = vi.mocked(fetch)
     render(
       <Providers>
         <UsernameChecker />
@@ -98,13 +111,65 @@ describe('checker pages', () => {
     await user.type(screen.getByLabelText('Nom d’utilisateur'), 'a')
     await user.click(screen.getByRole('button', { name: 'Vérifier' }))
     expect(await screen.findByText(/Le pseudo doit contenir 3 à 64/)).toBeInTheDocument()
+    expect(fetchSpy.mock.calls.some(([url]) => String(url).includes('/api/check-username'))).toBe(
+      false,
+    )
+  })
 
-    await user.clear(screen.getByLabelText('Nom d’utilisateur'))
-    await user.type(screen.getByLabelText('Nom d’utilisateur'), 'known-user')
+  it('requires consent, then runs a real username lookup', async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/api/check-username')) {
+        return new Response(
+          JSON.stringify({
+            kind: 'username',
+            ok: true,
+            state: 'breached',
+            checkedAt: '2026-11-08T10:00:00.000Z',
+            totalBreaches: 1,
+            breaches: [],
+            providers: [],
+            respondingProviders: 1,
+            totalProviders: 1,
+            durationMs: 900,
+          }),
+          { status: 200 },
+        )
+      }
+      return new Response('{}', { status: 404 })
+    })
+
+    render(
+      <Providers>
+        <UsernameChecker />
+      </Providers>,
+    )
+
+    const input = screen.getByLabelText('Nom d’utilisateur')
+    await user.type(input, 'known-user')
+
+    // No consent yet: the request must never leave the browser.
     await user.click(screen.getByRole('button', { name: 'Vérifier' }))
     expect(
-      await screen.findByText('Aucune conclusion n’est tirée pour « known-user ».'),
+      await screen.findByText('Cochez la case de consentement pour continuer.'),
     ).toBeInTheDocument()
+    expect(
+      vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/check-username')),
+    ).toBe(false)
+
+    // With consent, the real endpoint is called with the username only.
+    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('button', { name: 'Vérifier' }))
+
+    const call = vi
+      .mocked(fetch)
+      .mock.calls.find(([url]) => String(url).includes('/api/check-username'))
+    expect(call).toBeDefined()
+    expect(JSON.parse(String((call?.[1] as RequestInit).body))).toEqual({
+      username: 'known-user',
+      consent: true,
+    })
   })
 
   it('validates a phone number and shows the E.164 form', async () => {
@@ -161,7 +226,7 @@ describe('results page', () => {
       <MemoryRouter initialEntries={['/check/email/results']}>
         <I18nProvider>
           <ResultsProvider>
-            <EmailResults />
+            <Results kind="email" />
           </ResultsProvider>
         </I18nProvider>
       </MemoryRouter>,
@@ -189,7 +254,7 @@ describe('static pages', () => {
       </Providers>,
     )
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Documentation')
-    expect(screen.getAllByText('ORELYS_API_KEY').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Aucune clé d’API requise').length).toBeGreaterThan(0)
   })
 
   it('renders the not-found page', () => {
@@ -210,16 +275,18 @@ describe('ProviderStatus', () => {
       status: 'ok',
       responded: true,
       breaches: [],
+      exposedCategories: [],
       error: null,
       queriedAt: '2026-11-08T10:00:00.000Z',
       durationMs: 300,
     },
     {
-      provider: 'orelys',
-      displayName: 'Orelys',
+      provider: 'leakcheck',
+      displayName: 'LeakCheck',
       status: 'timeout',
       responded: false,
       breaches: [],
+      exposedCategories: [],
       error: { code: 'timeout', detail: 'Provider did not answer before the deadline.', retryAfterSeconds: null },
       queriedAt: '2026-11-08T10:00:00.000Z',
       durationMs: 6000,
@@ -257,4 +324,4 @@ describe('SecurityRecommendations', () => {
 })
 
 // Keeps the fixture type honest if the response shape ever changes.
-export type { EmailCheckResponse }
+export type { CheckResponse }

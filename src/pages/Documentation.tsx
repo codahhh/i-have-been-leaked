@@ -62,14 +62,8 @@ netlify/
           <Section id="environment" title={t('docs.env.title')} index={3}>
             <ul className="space-y-2">
               <li className="flex flex-col gap-1">
-                <code className="font-mono text-[12px] text-ink">ORELYS_API_KEY</code>
-                <span>{t('docs.env.orelys')}</span>
-              </li>
-              <li className="flex flex-col gap-1">
-                <code className="font-mono text-[12px] text-ink">
-                  ORELYS_API_KEY_HEADER · ORELYS_API_KEY_PREFIX
-                </code>
-                <span>{t('docs.env.orelysHeader')}</span>
+                <code className="font-mono text-[12px] text-ink">NODE_VERSION</code>
+                <span>{t('docs.env.node')}</span>
               </li>
             </ul>
             <p>{t('docs.env.none')}</p>
@@ -128,11 +122,7 @@ export const PROVIDERS = {
           <div className="rounded-2xl border border-line-soft bg-surface p-5">
             <h2 className="eyebrow">{t('docs.env.title')}</h2>
             <p className="mt-3 font-mono text-[11.5px] leading-6 text-muted">
-              ORELYS_API_KEY
-              <br />
-              <span className="text-faint">ORELYS_API_KEY_HEADER</span>
-              <br />
-              <span className="text-faint">ORELYS_API_KEY_PREFIX</span>
+              {t('docs.env.noneShort')}
             </p>
           </div>
         </aside>

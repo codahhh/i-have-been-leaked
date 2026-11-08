@@ -13,6 +13,7 @@ import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from 'node:
  */
 const API_ROUTES: Record<string, string> = {
   '/api/check-email': '/netlify/functions/check-email.ts',
+  '/api/check-username': '/netlify/functions/check-username.ts',
   '/api/password-range': '/netlify/functions/password-range.ts',
   '/api/providers': '/netlify/functions/providers.ts',
   '/api/breach-stats': '/netlify/functions/breach-stats.ts',

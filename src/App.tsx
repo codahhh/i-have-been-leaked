@@ -12,7 +12,7 @@ import { Home } from '@/pages/Home'
  * in libphonenumber metadata, which has no business in the first payload.
  */
 const EmailChecker = lazy(() => import('@/pages/EmailChecker').then((m) => ({ default: m.EmailChecker })))
-const EmailResults = lazy(() => import('@/pages/EmailResults').then((m) => ({ default: m.EmailResults })))
+const ResultsPage = lazy(() => import('@/pages/Results').then((m) => ({ default: m.Results })))
 const UsernameChecker = lazy(() => import('@/pages/UsernameChecker').then((m) => ({ default: m.UsernameChecker })))
 const PhoneChecker = lazy(() => import('@/pages/PhoneChecker').then((m) => ({ default: m.PhoneChecker })))
 const PasswordChecker = lazy(() => import('@/pages/PasswordChecker').then((m) => ({ default: m.PasswordChecker })))
@@ -25,6 +25,7 @@ const PAGE_TITLES: Record<string, TranslationKey> = {
   '/': 'brand.tagline',
   '/check/email': 'email.page.title',
   '/check/email/results': 'results.title',
+  '/check/username/results': 'results.title',
   '/check/username': 'username.page.title',
   '/check/phone': 'phone.page.title',
   '/check/password': 'password.page.title',
@@ -67,8 +68,9 @@ function AnimatedRoutes() {
       <Routes location={location}>
         <Route path="/" element={<Home />} />
         <Route path="/check/email" element={<EmailChecker />} />
-        <Route path="/check/email/results" element={<EmailResults />} />
+        <Route path="/check/email/results" element={<ResultsPage kind="email" />} />
         <Route path="/check/username" element={<UsernameChecker />} />
+        <Route path="/check/username/results" element={<ResultsPage kind="username" />} />
         <Route path="/check/phone" element={<PhoneChecker />} />
         <Route path="/check/password" element={<PasswordChecker />} />
         <Route path="/about" element={<About />} />

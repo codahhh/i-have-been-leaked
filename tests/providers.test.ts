@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { queryLeakCheck } from '../netlify/lib/providers/leakcheck'
 import { queryXposedOrNot } from '../netlify/lib/providers/xposedOrNot'
-import { queryOrelys } from '../netlify/lib/providers/orelys'
 
 type FetchHandler = (url: string, init: RequestInit) => Promise<Response> | Response
 
@@ -16,36 +16,29 @@ const deadline = () => Date.now() + 5000
 
 afterEach(() => {
   vi.unstubAllGlobals()
-  delete process.env.ORELYS_API_KEY
 })
 
 describe('XposedOrNot provider', () => {
-  it('parses breach names and enriches them with dates and data classes', async () => {
-    mockFetch((url) => {
-      if (url.includes('/v1/breach-analytics')) {
-        return new Response(
-          JSON.stringify({
-            ExposedBreaches: {
-              breaches_details: [
-                {
-                  breach: 'Adobe',
-                  domain: 'adobe.com',
-                  xposed_date: '2013-10-04',
-                  xposed_data: 'Emails;Passwords;Usernames',
-                  details: 'Creative Cloud credentials.',
-                  xposed_records: 152445165,
-                },
-              ],
-            },
-          }),
-          { status: 200 },
-        )
-      }
-      return new Response(
-        JSON.stringify({ status: 'success', breaches: [['Adobe', 'LinkedIn']] }),
-        { status: 200 },
-      )
-    })
+  /** Real payload shape, verified against the live API. */
+  const detailedPayload = {
+    status: 'success',
+    email: 'user@example.com',
+    breaches: [['Adobe', 'LinkedIn']],
+    breach_details: [
+      {
+        name: 'Adobe',
+        records_exposed: 152445165,
+        description: 'Creative Cloud credentials.',
+        breach_date: '2013-10-04',
+        company: { name: 'adobe.com', industry: 'Software' },
+        security: { password_risk: 'easytocrack' },
+        exposed_data: ['Email addresses', 'Passwords', 'Usernames'],
+      },
+    ],
+  }
+
+  it('parses names and details from a single request', async () => {
+    const spy = mockFetch(() => new Response(JSON.stringify(detailedPayload), { status: 200 }))
 
     const result = await queryXposedOrNot('user@example.com', deadline())
 
@@ -54,10 +47,19 @@ describe('XposedOrNot provider', () => {
     expect(result.breaches.map((b) => b.name)).toEqual(['Adobe', 'LinkedIn'])
     expect(result.breaches[0].breachDate).toBe('2013-10-04')
     expect(result.breaches[0].domain).toBe('adobe.com')
-    expect(result.breaches[0].exposedData).toEqual(['Emails', 'Passwords', 'Usernames'])
+    expect(result.breaches[0].exposedData).toEqual([
+      'Email addresses',
+      'Passwords',
+      'Usernames',
+      'Password risk: easytocrack',
+    ])
     expect(result.breaches[0].pwnCount).toBe(152445165)
-    // LinkedIn had no detail: it still exists, just with empty fields.
+    // LinkedIn had no detail record: it still exists, just with empty fields.
     expect(result.breaches[1].breachDate).toBeNull()
+
+    // Quota discipline: details come from the same call, not a second one.
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(String(spy.mock.calls[0][0])).toContain('details=true')
   })
 
   it('treats the documented 404 as a real "no match" answer', async () => {
@@ -68,10 +70,23 @@ describe('XposedOrNot provider', () => {
     expect(result.breaches).toEqual([])
   })
 
+  it('accepts an explicit "Not found" body served with HTTP 200', async () => {
+    mockFetch(() => new Response(JSON.stringify({ Error: 'Not found', email: null }), { status: 200 }))
+    const result = await queryXposedOrNot('nobody@example.com', deadline())
+    expect(result.status).toBe('not_found')
+    expect(result.responded).toBe(true)
+  })
+
+  it('never reads a provider error body as a clean answer', async () => {
+    mockFetch(() => new Response(JSON.stringify({ Error: 'Database unavailable' }), { status: 200 }))
+    const result = await queryXposedOrNot('user@example.com', deadline())
+    expect(result.status).toBe('unavailable')
+    expect(result.responded).toBe(false)
+    expect(result.error?.detail).toContain('Database unavailable')
+  })
+
   it('reports HTTP 429 as rate-limited with the provider delay', async () => {
-    mockFetch(
-      () => new Response('', { status: 429, headers: { 'retry-after': '42' } }),
-    )
+    mockFetch(() => new Response('', { status: 429, headers: { 'retry-after': '42' } }))
     const result = await queryXposedOrNot('user@example.com', deadline())
     expect(result.status).toBe('rate_limited')
     expect(result.responded).toBe(false)
@@ -114,11 +129,8 @@ describe('XposedOrNot provider', () => {
     expect(result.responded).toBe(false)
   })
 
-  it('keeps the primary result when enrichment fails', async () => {
-    mockFetch((url) => {
-      if (url.includes('/v1/breach-analytics')) return new Response('nope', { status: 500 })
-      return new Response(JSON.stringify({ breaches: [['Dropbox']] }), { status: 200 })
-    })
+  it('still answers when the payload carries no detail array', async () => {
+    mockFetch(() => new Response(JSON.stringify({ breaches: [['Dropbox']] }), { status: 200 }))
     const result = await queryXposedOrNot('user@example.com', deadline())
     expect(result.status).toBe('ok')
     expect(result.breaches).toHaveLength(1)
@@ -126,76 +138,102 @@ describe('XposedOrNot provider', () => {
   })
 })
 
-describe('Orelys provider', () => {
-  it('is reported as not configured when the API key is absent', async () => {
-    const spy = mockFetch(() => new Response('{}', { status: 200 }))
-    const result = await queryOrelys('user@example.com', deadline())
-    expect(result.status).toBe('not_configured')
-    expect(result.responded).toBe(false)
-    expect(spy).not.toHaveBeenCalled()
-  })
-
-  it('parses a document-shaped payload when configured', async () => {
-    process.env.ORELYS_API_KEY = 'test-key'
+describe('LeakCheck provider (public API)', () => {
+  it('parses sources and aggregate categories, with no key required', async () => {
     const spy = mockFetch(
       () =>
         new Response(
           JSON.stringify({
-            breaches: [
-              {
-                name: 'Canva',
-                domain: 'canva.com',
-                breachDate: '2019-05-24',
-                dataClasses: ['Email addresses', 'Passwords'],
-                pwnCount: 137000000,
-              },
+            success: true,
+            found: 1675,
+            fields: ['password', 'ssn', 'dob', 'city'],
+            sources: [
+              { name: 'Aura.com', date: '2026-03' },
+              { name: 'Canva.com', date: '2019-05' },
             ],
           }),
           { status: 200 },
         ),
     )
 
-    const result = await queryOrelys('user@example.com', deadline())
-    expect(result.status).toBe('ok')
-    expect(result.breaches[0].name).toBe('Canva')
-    expect(result.breaches[0].breachDate).toBe('2019-05-24')
-    expect(result.breaches[0].exposedData).toEqual(['Email addresses', 'Passwords'])
+    const result = await queryLeakCheck('user@example.com', 'email', deadline())
 
-    // The address goes in the JSON body, with a bearer token header.
-    const [, init] = spy.mock.calls[0]
-    expect(init?.method).toBe('POST')
-    expect(JSON.parse(String(init?.body))).toEqual({ email: 'user@example.com' })
-    expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer test-key')
+    expect(result.status).toBe('ok')
+    expect(result.responded).toBe(true)
+    expect(result.breaches.map((b) => b.name)).toEqual(['Aura.com', 'Canva.com'])
+    expect(result.breaches[0].breachDate).toBe('2026-03')
+    expect(result.breaches[0].domain).toBe('aura.com')
+    // Categories are query-level: attached to the provider, not to a source.
+    expect(result.exposedCategories).toEqual(['password', 'ssn', 'dob', 'city'])
+    expect(result.breaches[0].exposedData).toEqual([])
+
+    // No credential is ever sent: the endpoint is public.
+    const [url, init] = spy.mock.calls[0]
+    expect(String(url)).toContain('leakcheck.io/api/public?check=user%40example.com')
+    expect(init?.headers).not.toHaveProperty('Authorization')
   })
 
-  it('accepts an explicit negative answer', async () => {
-    process.env.ORELYS_API_KEY = 'test-key'
-    mockFetch(() => new Response(JSON.stringify({ found: false }), { status: 200 }))
-    const result = await queryOrelys('user@example.com', deadline())
+  it('supports username lookups on the same endpoint', async () => {
+    const spy = mockFetch(
+      () =>
+        new Response(
+          JSON.stringify({
+            success: true,
+            found: 1000,
+            fields: ['city', 'password'],
+            sources: [{ name: 'Scam.com', date: '2015-11' }],
+          }),
+          { status: 200 },
+        ),
+    )
+
+    const result = await queryLeakCheck('admin', 'username', deadline())
+    expect(result.status).toBe('ok')
+    expect(result.breaches[0].name).toBe('Scam.com')
+    expect(String(spy.mock.calls[0][0])).toContain('check=admin')
+  })
+
+  it('treats "Not found" as a real answer', async () => {
+    mockFetch(
+      () => new Response(JSON.stringify({ success: false, error: 'Not found' }), { status: 200 }),
+    )
+    const result = await queryLeakCheck('nobody@example.com', 'email', deadline())
     expect(result.status).toBe('not_found')
     expect(result.responded).toBe(true)
   })
 
-  it('refuses to read an unknown payload as "no breach"', async () => {
-    process.env.ORELYS_API_KEY = 'test-key'
-    mockFetch(() => new Response(JSON.stringify({ message: 'ok', data: { foo: 1 } }), { status: 200 }))
-    const result = await queryOrelys('user@example.com', deadline())
+  it('rejects a value the provider cannot type (e.g. a phone number)', async () => {
+    mockFetch(
+      () =>
+        new Response(
+          JSON.stringify({ success: false, error: 'Could not determine search type automatically' }),
+          { status: 200 },
+        ),
+    )
+    const result = await queryLeakCheck('+33612345678', 'username', deadline())
+    expect(result.status).toBe('unavailable')
+    expect(result.responded).toBe(false)
+  })
+
+  it('refuses to read matches it cannot name as "no match"', async () => {
+    mockFetch(
+      () => new Response(JSON.stringify({ success: true, found: 12, sources: [] }), { status: 200 }),
+    )
+    const result = await queryLeakCheck('user@example.com', 'email', deadline())
     expect(result.status).toBe('invalid_response')
     expect(result.responded).toBe(false)
   })
 
-  it('surfaces rejected credentials as a configuration problem', async () => {
-    process.env.ORELYS_API_KEY = 'wrong'
-    mockFetch(() => new Response('unauthorized', { status: 401 }))
-    const result = await queryOrelys('user@example.com', deadline())
-    expect(result.status).toBe('not_configured')
-    expect(result.error?.code).toBe('unauthorized')
+  it('rejects an unknown envelope instead of assuming no breach', async () => {
+    mockFetch(() => new Response(JSON.stringify({ message: 'ok' }), { status: 200 }))
+    const result = await queryLeakCheck('user@example.com', 'email', deadline())
+    expect(result.status).toBe('invalid_response')
+    expect(result.responded).toBe(false)
   })
 
   it('propagates rate limiting', async () => {
-    process.env.ORELYS_API_KEY = 'test-key'
     mockFetch(() => new Response('', { status: 429, headers: { 'retry-after': '30' } }))
-    const result = await queryOrelys('user@example.com', deadline())
+    const result = await queryLeakCheck('user@example.com', 'email', deadline())
     expect(result.status).toBe('rate_limited')
     expect(result.error?.retryAfterSeconds).toBe(30)
   })

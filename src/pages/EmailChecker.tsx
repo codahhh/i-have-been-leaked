@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, BookOpen } from 'lucide-react'
-import type { EmailCheckResponse } from '@/types'
+import type { CheckResponse } from '@/types'
 import { useI18n } from '@/i18n'
 import { useResults } from '@/state/ResultsContext'
 import { PageHeader } from '@/components/PageHeader'
@@ -12,14 +12,14 @@ import { PrivacyNotice } from '@/components/PrivacyNotice'
 export function EmailChecker() {
   const { t } = useI18n()
   const navigate = useNavigate()
-  const { setEmailResult } = useResults()
+  const { setResult } = useResults()
 
   const handleResult = useCallback(
-    (email: string, result: EmailCheckResponse) => {
-      setEmailResult({ email, result })
+    (email: string, result: CheckResponse) => {
+      setResult('email', { identifier: email, result })
       navigate('/check/email/results')
     },
-    [navigate, setEmailResult],
+    [navigate, setResult],
   )
 
   return (
