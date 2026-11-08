@@ -10,6 +10,7 @@ import { EmailSearchForm } from '@/components/EmailSearchForm'
 import { PasswordSearchForm } from '@/components/PasswordSearchForm'
 import { UsernameSearchForm } from '@/components/UsernameSearchForm'
 import { PhoneSearchForm } from '@/components/PhoneSearchForm'
+import { GitHubStar } from '@/components/GitHubStar'
 import { ProviderOverview } from '@/components/ProviderOverview'
 import { BreachStatsPanel } from '@/components/BreachStatsPanel'
 import { PrivacyNotice } from '@/components/PrivacyNotice'
@@ -81,8 +82,15 @@ export function Home() {
             </p>
           </div>
 
+          {/* The repository sits directly above the form: a privacy tool that
+              cannot be read is only a promise, so the source gets the first
+              quiet ask on the page. */}
+          <div className="mt-9 flex justify-center animate-rise [animation-delay:80ms]">
+            <GitHubStar />
+          </div>
+
           {/* ------------------------------------------------ search panel */}
-          <div className="mx-auto mt-10 max-w-2xl animate-rise [animation-delay:120ms]">
+          <div className="mx-auto mt-5 max-w-2xl animate-rise [animation-delay:120ms]">
             <div className="rounded-2xl border border-line bg-card p-2 shadow-[0_40px_100px_-60px_rgba(239,68,68,0.45)]">
               <div className="px-1 pt-1">
                 <SearchTypeSelector value={type} onChange={setType} idPrefix="home" />

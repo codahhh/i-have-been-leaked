@@ -103,6 +103,9 @@ export const fr = {
     'Aucune base de données d’utilisateurs, aucun historique de recherche, aucun traqueur publicitaire. Votre adresse transite par notre fonction serveur le temps d’une requête et n’est jamais écrite sur disque.',
   'home.privacy.link': 'Lire la politique de confidentialité',
 
+  'star.label': 'Star this project',
+  'star.aria': 'Ouvrir le dépôt GitHub du projet dans un nouvel onglet',
+
   'home.cta.title': 'Commencez par votre adresse e-mail',
   'home.cta.body':
     'C’est la vérification la plus fiable : deux sources indépendantes, dédoublonnage, et un état explicite pour chacune.',

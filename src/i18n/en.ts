@@ -101,6 +101,9 @@ export const en: Dictionary = {
     'No user database, no search history, no advertising tracker. Your address passes through our server function for the duration of one request and is never written to disk.',
   'home.privacy.link': 'Read the privacy policy',
 
+  'star.label': 'Star this project',
+  'star.aria': 'Open the project’s GitHub repository in a new tab',
+
   'home.cta.title': 'Start with your email address',
   'home.cta.body':
     'It is the most reliable check we offer: two independent sources, de-duplicated, with an explicit status for each.',

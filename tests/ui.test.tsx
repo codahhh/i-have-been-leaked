@@ -164,6 +164,24 @@ describe('Home page', () => {
     expect(screen.getByText('Aucune donnée conservée')).toBeInTheDocument()
   })
 
+  it('links to the repository right above the search form', () => {
+    stubBackend()
+    render(
+      <Providers>
+        <Home />
+      </Providers>,
+    )
+
+    const link = screen.getByRole('link', {
+      name: 'Ouvrir le dépôt GitHub du projet dans un nouvel onglet',
+    })
+    expect(link).toHaveTextContent('Star this project')
+    expect(link).toHaveAttribute('href', 'https://github.com/codahhh/i-have-been-leaked')
+    // Opens in a new tab, and never hands the referrer to the target.
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
   it('survives a malformed capability payload instead of crashing', async () => {
     // A proxy error page or a stale deploy can return 200 with a wrong body.
     stubFetch((url) => {
