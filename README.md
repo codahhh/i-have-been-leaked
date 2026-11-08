@@ -293,6 +293,11 @@ The same handlers run on Vercel through Web-standard function entry points.
    (`/((?!api/).*) → /index.html`) and the security headers.
 3. Every file in `api/` becomes a function at the matching `/api/*` path:
    `check-email`, `check-username`, `password-range`, `providers`, `breach-stats`.
+   Those files are **generated bundles** (`npm run build:api`, run by `npm run
+   build`): Vercel loads `api/*.js` as plain Node modules, so a relative import
+   of a TypeScript file outside `api/` would not resolve at runtime. Bundling
+   keeps one source of truth — the handlers in `netlify/lib/handlers/` — and the
+   bundles contain no duplicated logic.
 4. No environment variables are required.
 
 ```bash

@@ -6,11 +6,12 @@
   "description": "Privacy-first data breach checker. XposedOrNot + Orelys for accounts, HIBP Pwned Passwords (k-anonymity) for passwords.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "npm run build:api && tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:api": "node scripts/build-vercel-api.mjs"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",
@@ -21,6 +22,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.2.1",
     "autoprefixer": "^10.6.2",
+    "esbuild": "^0.28.2",
     "jsdom": "^31.0.0",
     "postcss": "^8.5.32",
     "tailwindcss": "^3.4.19",
