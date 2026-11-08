@@ -82,11 +82,6 @@ export function EmailResults() {
             </div>
           )}
 
-          {result.state === 'error' ? null : (
-            <div className="mt-8">
-              <SecurityRecommendations />
-            </div>
-          )}
         </div>
 
         <aside>
@@ -101,6 +96,14 @@ export function EmailResults() {
           </div>
         </aside>
       </div>
+
+      {/* Full width, after both columns: on mobile the source status therefore
+          sits directly under the verdict instead of below the advice. */}
+      {result.state === 'error' ? null : (
+        <div className="mt-10">
+          <SecurityRecommendations />
+        </div>
+      )}
     </div>
   )
 }

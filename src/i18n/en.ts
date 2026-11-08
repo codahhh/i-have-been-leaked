@@ -381,6 +381,10 @@ export const en: Dictionary = {
     'The server returned a response we could not use. We would rather tell you than show a doubtful result.',
   'errors.invalid_email.title': 'Invalid address',
   'errors.invalid_email.body': 'Check the format of the email address.',
+  'errors.crash.title': 'An unexpected error occurred',
+  'errors.crash.body':
+    'This page could not be displayed. Your search data is stored nowhere, so reloading is enough. Nothing was sent anywhere.',
+  'errors.crash.reload': 'Reload the page',
   'errors.generic.title': 'Check failed',
   'errors.generic.body': 'The check could not be completed. Try again in a moment.',
 

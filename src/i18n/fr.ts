@@ -383,6 +383,10 @@ export const fr = {
     'Le serveur a renvoyé une réponse inexploitable. Nous préférons vous le dire plutôt que d’afficher un résultat douteux.',
   'errors.invalid_email.title': 'Adresse invalide',
   'errors.invalid_email.body': 'Vérifiez le format de l’adresse e-mail.',
+  'errors.crash.title': 'Une erreur inattendue est survenue',
+  'errors.crash.body':
+    'Cette page n’a pas pu s’afficher. Vos données de recherche ne sont conservées nulle part, il suffit donc de recharger. Aucune information n’a été envoyée.',
+  'errors.crash.reload': 'Recharger la page',
   'errors.generic.title': 'Échec de la vérification',
   'errors.generic.body': 'La vérification n’a pas pu aboutir. Réessayez dans un instant.',
 

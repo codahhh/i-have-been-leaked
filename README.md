@@ -68,7 +68,7 @@ src/
   pages/                         Home, 4 checkers, results, About, Privacy, Docs
   utils/                         validation, phone, exposure mapping, formatting
   state/ResultsContext.tsx       in-memory only — never persisted
-tests/                           113 unit + component tests
+tests/                           114 unit + component tests
 ```
 
 ### Request flow — email
@@ -191,7 +191,7 @@ as they will in production.
 
 ```bash
 npm run typecheck  # tsc --noEmit (strict, no unused locals)
-npm test           # 113 tests: validation, normalisation, merge, providers,
+npm test           # 114 tests: validation, normalisation, merge, providers,
                    # handler, password protocol, i18n parity, UI flows
 npm run build      # typecheck + bundle to dist/
 npm run preview    # serve the production build
@@ -296,6 +296,12 @@ export const PROVIDERS = {
 - Mobile: single column, 44 px+ touch targets, no fixed widths, no horizontal
   scroll (`overflow-x: clip`, which keeps the sticky header working — `hidden`
   would not), the header collapses into a 46 px-row panel.
+- Accessibility: skip link, roving-tabindex arrow keys on the category tabs,
+  focus moved into `<main>` on navigation, `aria-live` on every asynchronous
+  result, and all text colours measured at ≥ 4.5:1 against their background.
+- Resilience: a route-level error boundary keeps the header and footer and
+  explains that a reload is all that is needed — no error monitoring sees
+  anything, so nothing is reported anywhere.
 - The hero grid texture and the red glow are the only decorations; there are no
   gradient-text headings and no glows on cards.
 

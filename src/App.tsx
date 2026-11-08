@@ -4,6 +4,7 @@ import { I18nProvider, useI18n } from '@/i18n'
 import type { TranslationKey } from '@/i18n/fr'
 import { ResultsProvider } from '@/state/ResultsContext'
 import { Layout } from '@/components/Layout'
+import { AppErrorBoundary } from '@/components/ErrorBoundary'
 import { Home } from '@/pages/Home'
 
 /**
@@ -90,7 +91,9 @@ export function AppShell() {
       <ResultsProvider>
         <DocumentMeta />
         <Layout>
-          <AnimatedRoutes />
+          <AppErrorBoundary>
+            <AnimatedRoutes />
+          </AppErrorBoundary>
         </Layout>
       </ResultsProvider>
     </I18nProvider>

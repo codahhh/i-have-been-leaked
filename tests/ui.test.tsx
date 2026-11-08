@@ -13,6 +13,7 @@ import { EmailSearchForm } from '@/components/EmailSearchForm'
 import { PasswordSearchForm } from '@/components/PasswordSearchForm'
 import { ResultsSummary } from '@/components/ResultsSummary'
 import { AppShell } from '@/App'
+import { AppErrorBoundary } from '@/components/ErrorBoundary'
 
 /* -------------------------------------------------------------------------- */
 /*  Fixtures                                                                  */
@@ -508,6 +509,31 @@ describe('Application shell', () => {
       </MemoryRouter>,
     )
     expect(await screen.findByRole('heading', { name: 'Page introuvable' })).toBeInTheDocument()
+  })
+})
+
+describe('Error boundary', () => {
+  it('replaces a crashed screen with translated copy and keeps the chrome', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    function Boom(): never {
+      throw new Error('boom')
+    }
+
+    render(
+      <MemoryRouter>
+        <I18nProvider>
+          <ResultsProvider>
+            <AppErrorBoundary>
+              <Boom />
+            </AppErrorBoundary>
+          </ResultsProvider>
+        </I18nProvider>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Une erreur inattendue est survenue' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Recharger la page' })).toBeInTheDocument()
+    spy.mockRestore()
   })
 })
 
