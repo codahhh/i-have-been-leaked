@@ -117,7 +117,7 @@ export const en: Dictionary = {
   'search.type.phone.title': 'Phone number',
   'search.type.phone.short': 'Phone',
   'search.type.phone.description':
-    'Validated international input; no free API covers phone numbers.',
+    'Validated international input, then a real lookup through LeakCheck’s public API.',
   'search.type.password.title': 'Password',
   'search.type.password.short': 'Password',
   'search.type.password.description':
@@ -146,6 +146,7 @@ export const en: Dictionary = {
   'results.title': 'Check result',
   'results.for': 'Result for {email}',
   'results.forUsername': 'Result for @{username}',
+  'results.forPhone': 'Result for {phone}',
   'results.checkedAt': 'Checked on {date}',
   'results.state.clean.title': 'No match found',
   'results.state.clean.body':
@@ -184,7 +185,7 @@ export const en: Dictionary = {
   'provider.coverage.xposedornot':
     'Open breach index covering thousands of publicly disclosed breaches. Free email endpoint, no key required.',
   'provider.coverage.leakcheck':
-    'Public API over 10B+ leaked records. Reports the breach sources and the categories of exposed data, never the data itself.',
+    'Public API over 10B+ leaked records: emails, usernames and phone numbers. Reports the breach sources and the categories of exposed data, never the data itself.',
   'provider.categories': 'Exposed categories (aggregated for this query): {categories}',
   'provider.status.ok': 'Answered',
   'provider.status.not_found': 'Answered — no match',
@@ -330,28 +331,25 @@ export const en: Dictionary = {
   /* ---------------------------------------------------------------- phone */
   'phone.page.title': 'Phone number check',
   'phone.page.lede':
-    'The number is validated in international format (E.164) before anything is sent. The sources we query reserve phone search for their paid plans.',
+    'The number is validated in international format (E.164) before anything is sent, then checked against the only free source that can search by number. A match points to a public breach — never to a certainty about you.',
   'phone.form.label': 'Phone number',
   'phone.form.country': 'Country',
   'phone.form.placeholder': '6 12 34 56 78',
   'phone.form.submit': 'Check',
   'phone.form.e164': 'International format: {e164}',
   'phone.form.countryHint': 'Select the country of the number.',
-  'phone.unavailable.title': 'Coverage unavailable in V1',
-  'phone.unavailable.body':
-    'No connected provider can check a number. We therefore show neither “clean” nor a breach: both would be inventions.',
-  'phone.unavailable.reason1.title': 'No reliable free source',
-  'phone.unavailable.reason1.body':
-    'Phone search exists at our providers, but only behind a paid plan. No free, verifiable API covers it today.',
-  'phone.unavailable.reason2.title': 'A number is not an identity',
-  'phone.unavailable.reason2.body':
-    'A number recycled by a carrier may have belonged to someone else. A raw match would be misleading without context.',
-  'phone.unavailable.reason3.title': 'Accuracy first',
-  'phone.unavailable.reason3.body':
-    'E.164 validation and the provider architecture are in place. Displaying a result only waits on a contractual source.',
-  'phone.unavailable.next': 'What remains to be configured',
-  'phone.unavailable.nextBody':
-    'An API key from a provider covering phone numbers, then an adapter declared in netlify/lib/config.ts. The form above is already ready to call it.',
+  'phone.form.note': 'Numbers get recycled: a match stays a clue.',
+  'phone.consent.title': 'What is sent',
+  'phone.consent.body':
+    'The number in international format, without the leading “+”, is sent from our server function to {providers} for the duration of one request. It is never stored, logged or echoed back to the browser.',
+  'phone.consent.checkbox': 'I agree to querying {providers}.',
+  'phone.consent.coverage':
+    'Only one public source answers phone searches. No match means “nothing in that source”, never “nothing anywhere”.',
+  'phone.scope.title': 'Narrower coverage than email',
+  'phone.scope.body':
+    'Phone numbers mostly surface in e-commerce, service and marketing dumps. A negative answer does not prove the number is absent everywhere.',
+  'phone.results.caveat':
+    'A number can be recycled by a carrier: the match may belong to a previous owner. Treat it as a clue, not as proof.',
 
   /* -------------------------------------------------------------- loading */
   'loading.title': 'Check in progress',
@@ -411,7 +409,7 @@ export const en: Dictionary = {
     'A React/TypeScript app, Netlify Functions on the server, and one adapter per provider. API keys stay server-side; the browser only talks to our own API, except for the password check where the range request goes straight to the range API.',
   'about.limits.title': 'Accepted limits',
   'about.limits.body':
-    'Username lookups rely on a single free source, so their coverage is narrower than for email addresses; phone lookups remain unavailable for lack of a free API. Address checking depends on XposedOrNot and LeakCheck being up. Passwords are never transmitted, but the range API does see the partial digest and your IP address.',
+    'Username and phone lookups rely on a single free source (LeakCheck), so their coverage is narrower than email addresses, which query two. That public tier allows one request per second. Passwords are never transmitted, but the range API does see the partial digest and your IP address.',
   'about.stack.title': 'Technical',
   'about.stack.body':
     'React 19, TypeScript, Vite, Tailwind CSS, Lucide icons, Netlify Functions. No database, no accounts, no trackers.',
@@ -466,6 +464,10 @@ export const en: Dictionary = {
   'docs.api.title': 'Internal API',
   'docs.api.checkEmail':
     'POST — { email: string, consent: true }. Returns a state (clean / breached / incomplete / error), merged breaches and the status of each provider. Never cached.',
+  'docs.api.checkUsername':
+    'POST — { username: string, consent: true }. Same contract as email, on the only sources that can search a username.',
+  'docs.api.checkPhone':
+    'POST — { phone: string, consent: true }. The number must be E.164; the server strips the “+” before querying the source.',
   'docs.api.passwordRange':
     'GET ?prefix=ABCDE — relay for the HIBP range API. Receives only 5 digest characters.',
   'docs.api.providers':

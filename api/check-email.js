@@ -42,6 +42,18 @@ function isValidUsername(raw) {
   if (value.length < USERNAME_MIN_LENGTH || value.length > USERNAME_MAX_LENGTH) return false;
   return /^[A-Za-z0-9._-]+$/.test(value);
 }
+var PHONE_MIN_DIGITS = 7;
+var PHONE_MAX_DIGITS = 15;
+function toPhoneDigits(raw) {
+  const compact = raw.trim().replace(/[\s().-]/g, "");
+  const withoutPlus = compact.startsWith("+") ? compact.slice(1) : compact;
+  if (!/^\d+$/.test(withoutPlus)) return null;
+  if (withoutPlus.length < PHONE_MIN_DIGITS || withoutPlus.length > PHONE_MAX_DIGITS) {
+    return null;
+  }
+  if (withoutPlus.startsWith("0")) return null;
+  return withoutPlus;
+}
 
 // netlify/lib/config.ts
 var XPOSEDORNOT_BASE = "https://api.xposedornot.com";
@@ -72,15 +84,19 @@ var PROVIDERS = {
     displayName: "LeakCheck",
     homepage: "https://leakcheck.io",
     documentation: "https://docs.leakcheck.io/public-api/lookup",
-    lookups: ["email", "username"],
-    coverage: "Public API over 10B+ leaked records. Reports the breach sources and the categories of exposed data \u2014 never the data itself.",
+    lookups: ["email", "username", "phone"],
+    coverage: "Public API over 10B+ leaked records. Answers email, username and phone lookups, and reports the breach sources and the categories of exposed data \u2014 never the data itself.",
     timeoutMs: 5e3,
     minIntervalMs: 1e3,
     quota: "1 request/s (public tier)",
     apiKeyEnvVar: null,
     endpoints: {
       checkEmail: (email) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(email)}`,
-      checkUsername: (username) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(username)}`
+      checkUsername: (username) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(username)}`,
+      // The public tier resolves a phone number only when it is sent as bare
+      // E.164 digits with `type=phone`; with a leading `+` it answers
+      // "Could not determine search type automatically" (verified 2026-11-08).
+      checkPhone: (digits) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(digits)}&type=phone`
     },
     setupNote: "Works without credentials. The public tier is free, including commercial use, and requires a \u201CPowered by LeakCheck\u201D link.",
     terms: "https://leakcheck.io/terms"
@@ -88,6 +104,7 @@ var PROVIDERS = {
 };
 var EMAIL_PROVIDER_IDS = ["xposedornot", "leakcheck"];
 var USERNAME_PROVIDER_IDS = ["leakcheck"];
+var PHONE_PROVIDER_IDS = ["leakcheck"];
 var STATS = {
   cacheSeconds: 6 * 60 * 60,
   timeoutMs: 6e3,
@@ -97,6 +114,7 @@ var STATS = {
 var RATE_LIMITS = {
   checkEmail: { limit: 8, windowSeconds: 60 },
   checkUsername: { limit: 8, windowSeconds: 60 },
+  checkPhone: { limit: 8, windowSeconds: 60 },
   passwordRange: { limit: 60, windowSeconds: 60 },
   providers: { limit: 60, windowSeconds: 60 },
   breachStats: { limit: 30, windowSeconds: 60 }
@@ -490,7 +508,7 @@ async function queryLeakCheck(value, kind, deadline) {
       durationMs: 0
     };
   }
-  const url = kind === "email" ? DEFINITION.endpoints.checkEmail?.(value) : DEFINITION.endpoints.checkUsername?.(value);
+  const url = kind === "email" ? DEFINITION.endpoints.checkEmail?.(value) : kind === "username" ? DEFINITION.endpoints.checkUsername?.(value) : DEFINITION.endpoints.checkPhone?.(value);
   if (!url) {
     return {
       ...base,
@@ -1029,6 +1047,12 @@ var USERNAME_CONFIG = {
   rateLimit: RATE_LIMITS.checkUsername,
   route: "check-username"
 };
+var PHONE_CONFIG = {
+  kind: "phone",
+  providerIds: PHONE_PROVIDER_IDS,
+  rateLimit: RATE_LIMITS.checkPhone,
+  route: "check-phone"
+};
 async function runLookup(request, config) {
   if (request.method !== "POST") return methodNotAllowed("POST");
   if (!isAllowedOrigin(request)) {
@@ -1049,7 +1073,7 @@ async function runLookup(request, config) {
   }
   const body = await readJsonBody(request);
   if (!body.ok) return body.response;
-  const raw = config.kind === "email" ? body.value.email : body.value.username;
+  const raw = config.kind === "email" ? body.value.email : config.kind === "username" ? body.value.username : body.value.phone;
   const consent = body.value.consent;
   if (typeof raw !== "string" || raw.trim().length === 0) {
     return apiError(400, { code: "invalid_request", message: "The value is missing." });
@@ -1060,12 +1084,21 @@ async function runLookup(request, config) {
       return apiError(400, { code: "invalid_email", message: "The address is not valid." });
     }
     value = normalizeEmail(raw);
-  } else {
+  } else if (config.kind === "username") {
     const trimmed = raw.trim();
     if (!isValidUsername(trimmed)) {
       return apiError(400, { code: "invalid_username", message: "The username is not valid." });
     }
     value = trimmed;
+  } else {
+    const digits = toPhoneDigits(raw);
+    if (!digits) {
+      return apiError(400, {
+        code: "invalid_phone",
+        message: "The phone number is not a valid E.164 number."
+      });
+    }
+    value = digits;
   }
   if (consent !== true) {
     return apiError(400, {

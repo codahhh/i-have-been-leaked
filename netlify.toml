@@ -29,6 +29,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/check-phone"
+  to = "/.netlify/functions/check-phone"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/password-range"
   to = "/.netlify/functions/password-range"
   status = 200

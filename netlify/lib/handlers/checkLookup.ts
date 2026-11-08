@@ -1,6 +1,7 @@
 /**
- * POST /api/check-email   — Body: { email: string, consent: boolean }
+ * POST /api/check-email    — Body: { email: string, consent: boolean }
  * POST /api/check-username — Body: { username: string, consent: boolean }
+ * POST /api/check-phone    — Body: { phone: string, consent: boolean }
  *
  * One orchestrator for every identifier we can really check: it runs the
  * relevant provider adapters in parallel, merges their records and derives an
@@ -22,8 +23,16 @@ import {
   isValidEmail,
   isValidUsername,
   normalizeEmail,
+  toPhoneDigits,
 } from '../../../src/utils/validation'
-import { EMAIL_PROVIDER_IDS, LIMITS, PROVIDERS, RATE_LIMITS, USERNAME_PROVIDER_IDS } from '../config'
+import {
+  EMAIL_PROVIDER_IDS,
+  LIMITS,
+  PHONE_PROVIDER_IDS,
+  PROVIDERS,
+  RATE_LIMITS,
+  USERNAME_PROVIDER_IDS,
+} from '../config'
 import { safeLog } from '../log'
 import { mergeBreaches } from '../merge'
 import { queryLeakCheck } from '../providers/leakcheck'
@@ -102,6 +111,13 @@ const USERNAME_CONFIG: LookupConfig = {
   route: 'check-username',
 }
 
+const PHONE_CONFIG: LookupConfig = {
+  kind: 'phone',
+  providerIds: PHONE_PROVIDER_IDS,
+  rateLimit: RATE_LIMITS.checkPhone,
+  route: 'check-phone',
+}
+
 async function runLookup(request: Request, config: LookupConfig): Promise<Response> {
   if (request.method !== 'POST') return methodNotAllowed('POST')
   if (!isAllowedOrigin(request)) {
@@ -125,7 +141,12 @@ async function runLookup(request: Request, config: LookupConfig): Promise<Respon
   const body = await readJsonBody(request)
   if (!body.ok) return body.response
 
-  const raw = config.kind === 'email' ? body.value.email : body.value.username
+  const raw =
+    config.kind === 'email'
+      ? body.value.email
+      : config.kind === 'username'
+        ? body.value.username
+        : body.value.phone
   const consent = body.value.consent
 
   if (typeof raw !== 'string' || raw.trim().length === 0) {
@@ -138,12 +159,23 @@ async function runLookup(request: Request, config: LookupConfig): Promise<Respon
       return apiError(400, { code: 'invalid_email', message: 'The address is not valid.' })
     }
     value = normalizeEmail(raw)
-  } else {
+  } else if (config.kind === 'username') {
     const trimmed = raw.trim()
     if (!isValidUsername(trimmed)) {
       return apiError(400, { code: 'invalid_username', message: 'The username is not valid.' })
     }
     value = trimmed
+  } else {
+    // Providers accept E.164 digits only: the `+` is stripped here, after the
+    // number has been validated, and that is the only form that leaves us.
+    const digits = toPhoneDigits(raw)
+    if (!digits) {
+      return apiError(400, {
+        code: 'invalid_phone',
+        message: 'The phone number is not a valid E.164 number.',
+      })
+    }
+    value = digits
   }
 
   // Explicit consent is required before anything leaves our server.
@@ -197,8 +229,13 @@ export function handleCheckUsername(request: Request): Promise<Response> {
   return runLookup(request, USERNAME_CONFIG)
 }
 
+export function handleCheckPhone(request: Request): Promise<Response> {
+  return runLookup(request, PHONE_CONFIG)
+}
+
 /** Which providers answer each kind of lookup — used by /api/providers. */
 export const PROVIDER_MATRIX = {
   email: EMAIL_PROVIDER_IDS,
   username: USERNAME_PROVIDER_IDS,
+  phone: PHONE_PROVIDER_IDS,
 } as const

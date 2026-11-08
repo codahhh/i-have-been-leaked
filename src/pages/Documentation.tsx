@@ -4,6 +4,8 @@ import { Article, CodeBlock, Section } from '@/components/Prose'
 
 const ENDPOINTS = [
   { method: 'POST', path: '/api/check-email', key: 'docs.api.checkEmail' },
+  { method: 'POST', path: '/api/check-username', key: 'docs.api.checkUsername' },
+  { method: 'POST', path: '/api/check-phone', key: 'docs.api.checkPhone' },
   { method: 'GET', path: '/api/password-range', key: 'docs.api.passwordRange' },
   { method: 'GET', path: '/api/providers', key: 'docs.api.providers' },
   { method: 'GET', path: '/api/breach-stats', key: 'docs.api.breachStats' },

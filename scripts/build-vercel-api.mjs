@@ -18,6 +18,7 @@ import { writeFile } from 'node:fs/promises'
 const ROUTES = [
   { file: 'api/check-email.js', handler: 'handleCheckEmail', module: 'netlify/lib/handlers/checkLookup.ts' },
   { file: 'api/check-username.js', handler: 'handleCheckUsername', module: 'netlify/lib/handlers/checkLookup.ts' },
+  { file: 'api/check-phone.js', handler: 'handleCheckPhone', module: 'netlify/lib/handlers/checkLookup.ts' },
   { file: 'api/providers.js', handler: 'handleProviders', module: 'netlify/lib/handlers/providers.ts' },
   { file: 'api/password-range.js', handler: 'handlePasswordRange', module: 'netlify/lib/handlers/passwordRange.ts' },
   { file: 'api/breach-stats.js', handler: 'handleBreachStats', module: 'netlify/lib/handlers/breachStats.ts' },

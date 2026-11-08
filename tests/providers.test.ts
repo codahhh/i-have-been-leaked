@@ -193,6 +193,31 @@ describe('LeakCheck provider (public API)', () => {
     expect(String(spy.mock.calls[0][0])).toContain('check=admin')
   })
 
+  it('answers phone lookups with bare E.164 digits and type=phone', async () => {
+    const spy = mockFetch(
+      () =>
+        new Response(
+          JSON.stringify({
+            success: true,
+            found: 4,
+            fields: ['phone', 'password'],
+            sources: [{ name: 'Zacks.com', date: '2020-05' }],
+          }),
+          { status: 200 },
+        ),
+    )
+
+    const result = await queryLeakCheck('33612345678', 'phone', deadline())
+    expect(result.status).toBe('ok')
+    expect(result.responded).toBe(true)
+    expect(result.breaches[0].name).toBe('Zacks.com')
+    expect(result.exposedCategories).toContain('phone')
+
+    const url = String(spy.mock.calls[0][0])
+    expect(url).toContain('check=33612345678')
+    expect(url).toContain('type=phone')
+  })
+
   it('treats "Not found" as a real answer', async () => {
     mockFetch(
       () => new Response(JSON.stringify({ success: false, error: 'Not found' }), { status: 200 }),
@@ -202,7 +227,9 @@ describe('LeakCheck provider (public API)', () => {
     expect(result.responded).toBe(true)
   })
 
-  it('rejects a value the provider cannot type (e.g. a phone number)', async () => {
+  it('keeps an untyped answer a failure instead of reading it as clean', async () => {
+    // A leading `+` makes the public tier answer "Could not determine search
+    // type automatically" — never a match, never a clean result.
     mockFetch(
       () =>
         new Response(
@@ -210,7 +237,7 @@ describe('LeakCheck provider (public API)', () => {
           { status: 200 },
         ),
     )
-    const result = await queryLeakCheck('+33612345678', 'username', deadline())
+    const result = await queryLeakCheck('+33612345678', 'phone', deadline())
     expect(result.status).toBe('unavailable')
     expect(result.responded).toBe(false)
   })

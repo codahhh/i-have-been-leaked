@@ -112,7 +112,7 @@ export type LookupState =
   | 'error'
 
 /** Lookup kinds that have a real, working data source. */
-export type LookupKind = 'email' | 'username'
+export type LookupKind = 'email' | 'username' | 'phone'
 
 export interface CheckResponse {
   /** Which checker produced this result. */
@@ -134,6 +134,7 @@ export interface ApiError {
   code:
     | 'invalid_email'
     | 'invalid_username'
+    | 'invalid_phone'
     | 'invalid_request'
     | 'consent_required'
     | 'rate_limited'
@@ -173,6 +174,8 @@ export interface ProviderCapabilityEntry {
   activeForEmail: boolean
   /** Whether this provider is queried by the username checker right now. */
   activeForUsername: boolean
+  /** Whether this provider is queried by the phone checker right now. */
+  activeForPhone: boolean
 }
 
 export interface ProvidersResponse {
@@ -182,8 +185,9 @@ export interface ProvidersResponse {
   /** Providers able to answer a username lookup. */
   usernameProviders: ProviderId[]
   /**
-   * Providers able to answer a phone lookup. Still empty: the free tiers we
-   * use do not expose phone search (LeakCheck reserves it for paid plans).
+   * Providers able to answer a phone lookup. LeakCheck's free public tier does
+   * answer phone searches, so this is no longer empty — but it is one source,
+   * and the UI states that instead of implying complete coverage.
    */
   phoneProviders: ProviderId[]
   /** True when the Pwned Passwords range API is reachable server-side. */

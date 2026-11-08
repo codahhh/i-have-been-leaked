@@ -63,3 +63,30 @@ export function isValidUsername(raw: string): boolean {
 export function isValidSha1Prefix(prefix: string): boolean {
   return /^[0-9A-Fa-f]{5}$/.test(prefix)
 }
+
+export const PHONE_MIN_DIGITS = 7
+export const PHONE_MAX_DIGITS = 15
+
+/**
+ * Normalises a phone number to the form providers accept: E.164 **digits only**.
+ *
+ * The browser formats and validates the number with libphonenumber (which is
+ * country-aware and knows the real prefix plan); this server-side helper is the
+ * last line of defence for the API contract. It accepts `+33612345678`,
+ * `0033 6 12 34 56 78`-free variants and plain digits, and returns `null` for
+ * anything that cannot be an E.164 number.
+ */
+export function toPhoneDigits(raw: string): string | null {
+  const compact = raw.trim().replace(/[\s().-]/g, '')
+  const withoutPlus = compact.startsWith('+') ? compact.slice(1) : compact
+  if (!/^\d+$/.test(withoutPlus)) return null
+  if (
+    withoutPlus.length < PHONE_MIN_DIGITS ||
+    withoutPlus.length > PHONE_MAX_DIGITS
+  ) {
+    return null
+  }
+  // E.164 country codes never start with 0, and the first digit is never 0.
+  if (withoutPlus.startsWith('0')) return null
+  return withoutPlus
+}

@@ -26,6 +26,7 @@ export function ResultsProvider({ children }: { children: ReactNode }) {
   const [results, setResults] = useState<Record<LookupKind, LookupResultState | null>>({
     email: null,
     username: null,
+    phone: null,
   })
 
   const setResult = useCallback((kind: LookupKind, value: LookupResultState) => {

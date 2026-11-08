@@ -34,15 +34,19 @@ var PROVIDERS = {
     displayName: "LeakCheck",
     homepage: "https://leakcheck.io",
     documentation: "https://docs.leakcheck.io/public-api/lookup",
-    lookups: ["email", "username"],
-    coverage: "Public API over 10B+ leaked records. Reports the breach sources and the categories of exposed data \u2014 never the data itself.",
+    lookups: ["email", "username", "phone"],
+    coverage: "Public API over 10B+ leaked records. Answers email, username and phone lookups, and reports the breach sources and the categories of exposed data \u2014 never the data itself.",
     timeoutMs: 5e3,
     minIntervalMs: 1e3,
     quota: "1 request/s (public tier)",
     apiKeyEnvVar: null,
     endpoints: {
       checkEmail: (email) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(email)}`,
-      checkUsername: (username) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(username)}`
+      checkUsername: (username) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(username)}`,
+      // The public tier resolves a phone number only when it is sent as bare
+      // E.164 digits with `type=phone`; with a leading `+` it answers
+      // "Could not determine search type automatically" (verified 2026-11-08).
+      checkPhone: (digits) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(digits)}&type=phone`
     },
     setupNote: "Works without credentials. The public tier is free, including commercial use, and requires a \u201CPowered by LeakCheck\u201D link.",
     terms: "https://leakcheck.io/terms"
@@ -57,6 +61,7 @@ var STATS = {
 var RATE_LIMITS = {
   checkEmail: { limit: 8, windowSeconds: 60 },
   checkUsername: { limit: 8, windowSeconds: 60 },
+  checkPhone: { limit: 8, windowSeconds: 60 },
   passwordRange: { limit: 60, windowSeconds: 60 },
   providers: { limit: 60, windowSeconds: 60 },
   breachStats: { limit: 30, windowSeconds: 60 }

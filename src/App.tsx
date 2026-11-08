@@ -28,6 +28,7 @@ const PAGE_TITLES: Record<string, TranslationKey> = {
   '/check/username/results': 'results.title',
   '/check/username': 'username.page.title',
   '/check/phone': 'phone.page.title',
+  '/check/phone/results': 'results.title',
   '/check/password': 'password.page.title',
   '/about': 'about.title',
   '/privacy': 'privacy.title',
@@ -72,6 +73,7 @@ function AnimatedRoutes() {
         <Route path="/check/username" element={<UsernameChecker />} />
         <Route path="/check/username/results" element={<ResultsPage kind="username" />} />
         <Route path="/check/phone" element={<PhoneChecker />} />
+        <Route path="/check/phone/results" element={<ResultsPage kind="phone" />} />
         <Route path="/check/password" element={<PasswordChecker />} />
         <Route path="/about" element={<About />} />
         <Route path="/privacy" element={<Privacy />} />

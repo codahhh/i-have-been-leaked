@@ -39,15 +39,16 @@ export function handleProviders(request: Request): Response {
     configured: isProviderConfigured(definition),
     activeForEmail: EMAIL_PROVIDER_IDS.includes(definition.id),
     activeForUsername: USERNAME_PROVIDER_IDS.includes(definition.id),
+    activeForPhone: PHONE_PROVIDER_IDS.includes(definition.id),
   }))
 
   const payload: ProvidersResponse = {
     providers,
     emailProviders: EMAIL_PROVIDER_IDS.filter((id) => isProviderConfigured(PROVIDERS[id])),
     usernameProviders: USERNAME_PROVIDER_IDS.filter((id) => isProviderConfigured(PROVIDERS[id])),
-    // No free source covers phone numbers: stated explicitly rather than faked.
-    // See the README for the extension path.
-    phoneProviders: [...PHONE_PROVIDER_IDS],
+    // LeakCheck's free public tier does answer phone searches; it is the only
+    // one that does, so the list is short and reported as such.
+    phoneProviders: PHONE_PROVIDER_IDS.filter((id) => isProviderConfigured(PROVIDERS[id])),
     passwordRangeAvailable: true,
   }
 

@@ -3,6 +3,7 @@
  *
  * Documented endpoint:
  *   GET https://leakcheck.io/api/public?check={email or username}
+ *   GET https://leakcheck.io/api/public?check={E164 digits}&type=phone
  *
  * Verified response shapes:
  *
@@ -11,6 +12,12 @@
  *              "sources":[{"name":"Aura.com","date":"2026-03"},…]}
  *   no match: {"success":false,"error":"Not found"}
  *   bad type: {"success":false,"error":"Could not determine search type automatically"}
+ *
+ * Phone search is part of the free public tier, but only if the number is sent
+ * as bare E.164 digits plus `type=phone`. Verified 2026-11-08:
+ *   ?check=33612345678&type=phone → {"success":true,"found":50,"sources":[…]}
+ *   ?check=+33612345678          → {"success":false,"error":"Could not determine …"}
+ *   ?check=33759812345&type=phone → {"success":false,"error":"Not found"}
  *
  * The public tier deliberately never returns the leaked values themselves —
  * only the breach sources and the *categories* of exposed data. Those
@@ -68,7 +75,7 @@ function extractCategories(record: Record<string, unknown>): string[] {
 
 export async function queryLeakCheck(
   value: string,
-  kind: 'email' | 'username',
+  kind: 'email' | 'username' | 'phone',
   deadline: number,
 ): Promise<ProviderResult> {
   const queriedAt = new Date().toISOString()
@@ -109,7 +116,9 @@ export async function queryLeakCheck(
   const url =
     kind === 'email'
       ? DEFINITION.endpoints.checkEmail?.(value)
-      : DEFINITION.endpoints.checkUsername?.(value)
+      : kind === 'username'
+        ? DEFINITION.endpoints.checkUsername?.(value)
+        : DEFINITION.endpoints.checkPhone?.(value)
   if (!url) {
     return {
       ...base,

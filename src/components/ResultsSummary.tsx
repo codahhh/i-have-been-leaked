@@ -114,7 +114,9 @@ export function ResultsSummary({
             <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-faint">
               {kind === 'email'
                 ? t('results.for', { email: identifier })
-                : t('results.forUsername', { username: identifier })}
+                : kind === 'username'
+                  ? t('results.forUsername', { username: identifier })
+                  : t('results.forPhone', { phone: identifier })}
             </p>
             <p className="mt-1 text-[11.5px] text-faint">
               {t('results.checkedAt', { date: formatTimestamp(result.checkedAt) })}
@@ -145,6 +147,10 @@ export function ResultsSummary({
         </dl>
 
         <p className="mt-5 text-[11.5px] leading-5 text-faint">{t('results.disclaimer')}</p>
+
+        {kind === 'phone' ? (
+          <p className="mt-2 text-[11.5px] leading-5 text-warn/80">{t('phone.results.caveat')}</p>
+        ) : null}
       </div>
     </section>
   )

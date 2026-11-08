@@ -4,6 +4,7 @@ import {
   isValidSha1Prefix,
   isValidUsername,
   normalizeEmail,
+  toPhoneDigits,
 } from '@/utils/validation'
 
 describe('isValidEmail', () => {
@@ -79,5 +80,24 @@ describe('isValidSha1Prefix', () => {
     expect(isValidSha1Prefix('21BD12')).toBe(false)
     expect(isValidSha1Prefix('ZZZZZ')).toBe(false)
     expect(isValidSha1Prefix('')).toBe(false)
+  })
+})
+
+describe('toPhoneDigits', () => {
+  it('strips the plus and every separator', () => {
+    expect(toPhoneDigits('+33612345678')).toBe('33612345678')
+    expect(toPhoneDigits('+33 6 12 34 56 78')).toBe('33612345678')
+    expect(toPhoneDigits(' +1 (206) 342-8631 ')).toBe('12063428631')
+    expect(toPhoneDigits('33612345678')).toBe('33612345678')
+  })
+
+  it('rejects what cannot be E.164', () => {
+    // 7 digits minimum, 15 maximum, never a leading zero.
+    expect(toPhoneDigits('123')).toBeNull()
+    expect(toPhoneDigits('1234567890123456')).toBeNull()
+    expect(toPhoneDigits('0612345678')).toBeNull()
+    expect(toPhoneDigits('+33 6 12 34 56 7a')).toBeNull()
+    expect(toPhoneDigits('')).toBeNull()
+    expect(toPhoneDigits('++33612345678')).toBeNull()
   })
 })

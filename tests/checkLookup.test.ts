@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { deriveState, handleCheckEmail, handleCheckUsername } from '../netlify/lib/handlers/checkLookup'
+import {
+  deriveState,
+  handleCheckEmail,
+  handleCheckPhone,
+  handleCheckUsername,
+} from '../netlify/lib/handlers/checkLookup'
 import { resetRateLimits } from '../netlify/lib/rateLimit'
 import type { CheckResponse, ProviderResult } from '@/types'
 
@@ -309,5 +314,94 @@ describe('POST /api/check-username', () => {
     expect(body.state).toBe('error')
     expect(body.respondingProviders).toBe(0)
     expect(body.ok).toBe(false)
+  })
+})
+
+describe('POST /api/check-phone', () => {
+  it('sends bare E.164 digits with an explicit phone type', async () => {
+    const spy = mockProviders({
+      leakcheck: () =>
+        json({
+          success: true,
+          found: 4,
+          fields: ['phone', 'password', 'city'],
+          sources: [
+            { name: 'Boulanger.com', date: '2024-09' },
+            { name: 'Cultura.com', date: '2024-09' },
+          ],
+        }),
+    })
+
+    const response = await handleCheckPhone(
+      post({ phone: '+33 6 12 34 56 78', consent: true }, { path: '/api/check-phone' }),
+    )
+    const body = (await response.json()) as CheckResponse
+
+    expect(response.status).toBe(200)
+    expect(body.kind).toBe('phone')
+    expect(body.state).toBe('breached')
+    expect(body.totalBreaches).toBe(2)
+    expect(body.providers).toHaveLength(1)
+
+    const url = String(spy.mock.calls[0][0])
+    // No `+`, no separators: the provider only types bare digits.
+    expect(url).toContain('check=33612345678')
+    expect(url).toContain('type=phone')
+    expect(url).not.toContain('%2B')
+  })
+
+  it('rejects a number that cannot be E.164 without calling any provider', async () => {
+    const spy = vi.fn()
+    vi.stubGlobal('fetch', spy)
+
+    for (const phone of ['0612345678', '123', 'not-a-number', '+012345678']) {
+      const response = await handleCheckPhone(
+        post({ phone, consent: true }, { path: '/api/check-phone' }),
+      )
+      const body = (await response.json()) as { error: { code: string } }
+      expect(response.status, phone).toBe(400)
+      expect(body.error.code, phone).toBe('invalid_phone')
+    }
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('still requires explicit consent', async () => {
+    const spy = vi.fn()
+    vi.stubGlobal('fetch', spy)
+
+    const response = await handleCheckPhone(
+      post({ phone: '+33612345678', consent: false }, { path: '/api/check-phone' }),
+    )
+    const body = (await response.json()) as { error: { code: string } }
+
+    expect(response.status).toBe(400)
+    expect(body.error.code).toBe('consent_required')
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('never reports a failing single source as a clean number', async () => {
+    mockProviders({ leakcheck: () => new Response('rate limited', { status: 429 }) })
+
+    const response = await handleCheckPhone(
+      post({ phone: '+33612345678', consent: true }, { path: '/api/check-phone' }),
+    )
+    const body = (await response.json()) as CheckResponse
+
+    expect(body.state).toBe('error')
+    expect(body.respondingProviders).toBe(0)
+    expect(body.ok).toBe(false)
+  })
+
+  it('accepts a real "not found" as an answered query', async () => {
+    mockProviders({ leakcheck: () => json({ success: false, error: 'Not found' }) })
+
+    const response = await handleCheckPhone(
+      post({ phone: '+33759812345', consent: true }, { path: '/api/check-phone' }),
+    )
+    const body = (await response.json()) as CheckResponse
+
+    expect(body.state).toBe('clean')
+    expect(body.respondingProviders).toBe(1)
+    expect(body.totalBreaches).toBe(0)
   })
 })

@@ -32,6 +32,8 @@ export interface ProviderDefinition {
   endpoints: {
     checkEmail?: (email: string) => string
     checkUsername?: (username: string) => string
+    /** Receives E.164 digits only — no `+`, no separators. */
+    checkPhone?: (digits: string) => string
     /** Public breach index used for aggregate statistics only. */
     breachIndex?: string
   }
@@ -73,9 +75,9 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
     displayName: 'LeakCheck',
     homepage: 'https://leakcheck.io',
     documentation: 'https://docs.leakcheck.io/public-api/lookup',
-    lookups: ['email', 'username'],
+    lookups: ['email', 'username', 'phone'],
     coverage:
-      'Public API over 10B+ leaked records. Reports the breach sources and the categories of exposed data — never the data itself.',
+      'Public API over 10B+ leaked records. Answers email, username and phone lookups, and reports the breach sources and the categories of exposed data — never the data itself.',
     timeoutMs: 5000,
     minIntervalMs: 1000,
     quota: '1 request/s (public tier)',
@@ -85,6 +87,11 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
         `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(email)}`,
       checkUsername: (username) =>
         `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(username)}`,
+      // The public tier resolves a phone number only when it is sent as bare
+      // E.164 digits with `type=phone`; with a leading `+` it answers
+      // "Could not determine search type automatically" (verified 2026-11-08).
+      checkPhone: (digits) =>
+        `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(digits)}&type=phone`,
     },
     setupNote:
       'Works without credentials. The public tier is free, including commercial use, and requires a “Powered by LeakCheck” link.',
@@ -101,12 +108,12 @@ export const USERNAME_PROVIDER_IDS: ProviderId[] = ['leakcheck']
 /**
  * Providers queried by the phone checker.
  *
- * Still empty on purpose: LeakCheck's public tier answers "Could not determine
- * search type automatically" for a phone number (phone search is a paid-tier
- * feature), and XposedOrNot has no phone endpoint. Rather than inventing a
- * result, the phone checker reports an unavailable state.
+ * LeakCheck's free public tier does answer phone searches: with E.164 digits
+ * and `type=phone` it returns the same source/fields payload as an email
+ * lookup. XposedOrNot has no phone endpoint, so it is absent here. Coverage is
+ * a single source, and the UI says so rather than implying completeness.
  */
-export const PHONE_PROVIDER_IDS: ProviderId[] = []
+export const PHONE_PROVIDER_IDS: ProviderId[] = ['leakcheck']
 
 /** Have I Been Pwned — Pwned Passwords range API (k-anonymity, no key). */
 export const PWNED_PASSWORDS = {
@@ -131,6 +138,7 @@ export const STATS = {
 export const RATE_LIMITS = {
   checkEmail: { limit: 8, windowSeconds: 60 },
   checkUsername: { limit: 8, windowSeconds: 60 },
+  checkPhone: { limit: 8, windowSeconds: 60 },
   passwordRange: { limit: 60, windowSeconds: 60 },
   providers: { limit: 60, windowSeconds: 60 },
   breachStats: { limit: 30, windowSeconds: 60 },

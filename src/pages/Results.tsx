@@ -11,13 +11,17 @@ import { SecurityRecommendations } from '@/components/SecurityRecommendations'
 const CHECKER_PATH: Record<LookupKind, string> = {
   email: '/check/email',
   username: '/check/username',
+  phone: '/check/phone',
 }
 
 /**
  * Shared results view for every identifier kind.
  *
- * The verdict, the provider report and the advice are identical for an email
- * and a username — what changes is the label of the thing that was checked.
+ * The verdict, the provider report and the advice are identical for an email,
+ * a username and a phone number — what changes is the label of the thing that
+ * was checked. A phone verdict carries one extra caveat, rendered by
+ * `ResultsSummary`: numbers are recycled by carriers, so a match may not be
+ * yours.
  */
 export function Results({ kind }: { kind: LookupKind }) {
   const { t, tp } = useI18n()

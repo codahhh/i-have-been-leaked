@@ -34,15 +34,19 @@ var PROVIDERS = {
     displayName: "LeakCheck",
     homepage: "https://leakcheck.io",
     documentation: "https://docs.leakcheck.io/public-api/lookup",
-    lookups: ["email", "username"],
-    coverage: "Public API over 10B+ leaked records. Reports the breach sources and the categories of exposed data \u2014 never the data itself.",
+    lookups: ["email", "username", "phone"],
+    coverage: "Public API over 10B+ leaked records. Answers email, username and phone lookups, and reports the breach sources and the categories of exposed data \u2014 never the data itself.",
     timeoutMs: 5e3,
     minIntervalMs: 1e3,
     quota: "1 request/s (public tier)",
     apiKeyEnvVar: null,
     endpoints: {
       checkEmail: (email) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(email)}`,
-      checkUsername: (username) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(username)}`
+      checkUsername: (username) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(username)}`,
+      // The public tier resolves a phone number only when it is sent as bare
+      // E.164 digits with `type=phone`; with a leading `+` it answers
+      // "Could not determine search type automatically" (verified 2026-11-08).
+      checkPhone: (digits) => `${LEAKCHECK_PUBLIC_BASE}?check=${encodeURIComponent(digits)}&type=phone`
     },
     setupNote: "Works without credentials. The public tier is free, including commercial use, and requires a \u201CPowered by LeakCheck\u201D link.",
     terms: "https://leakcheck.io/terms"
@@ -50,7 +54,7 @@ var PROVIDERS = {
 };
 var EMAIL_PROVIDER_IDS = ["xposedornot", "leakcheck"];
 var USERNAME_PROVIDER_IDS = ["leakcheck"];
-var PHONE_PROVIDER_IDS = [];
+var PHONE_PROVIDER_IDS = ["leakcheck"];
 var STATS = {
   cacheSeconds: 6 * 60 * 60,
   timeoutMs: 6e3,
@@ -60,6 +64,7 @@ var STATS = {
 var RATE_LIMITS = {
   checkEmail: { limit: 8, windowSeconds: 60 },
   checkUsername: { limit: 8, windowSeconds: 60 },
+  checkPhone: { limit: 8, windowSeconds: 60 },
   passwordRange: { limit: 60, windowSeconds: 60 },
   providers: { limit: 60, windowSeconds: 60 },
   breachStats: { limit: 30, windowSeconds: 60 }
@@ -165,15 +170,16 @@ function handleProviders(request) {
     lookups: definition.lookups,
     configured: isProviderConfigured(definition),
     activeForEmail: EMAIL_PROVIDER_IDS.includes(definition.id),
-    activeForUsername: USERNAME_PROVIDER_IDS.includes(definition.id)
+    activeForUsername: USERNAME_PROVIDER_IDS.includes(definition.id),
+    activeForPhone: PHONE_PROVIDER_IDS.includes(definition.id)
   }));
   const payload = {
     providers,
     emailProviders: EMAIL_PROVIDER_IDS.filter((id) => isProviderConfigured(PROVIDERS[id])),
     usernameProviders: USERNAME_PROVIDER_IDS.filter((id) => isProviderConfigured(PROVIDERS[id])),
-    // No free source covers phone numbers: stated explicitly rather than faked.
-    // See the README for the extension path.
-    phoneProviders: [...PHONE_PROVIDER_IDS],
+    // LeakCheck's free public tier does answer phone searches; it is the only
+    // one that does, so the list is short and reported as such.
+    phoneProviders: PHONE_PROVIDER_IDS.filter((id) => isProviderConfigured(PROVIDERS[id])),
     passwordRangeAvailable: true
   };
   return json(payload, { headers: { "Cache-Control": "public, max-age=300" } });

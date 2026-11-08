@@ -21,7 +21,7 @@ nothing that would be a guess is ever displayed.
 | **Email address** | ✅ Live | `XposedOrNot` + `LeakCheck` public API, both keyless, queried in parallel, normalised, merged, de-duplicated. |
 | **Username** | ✅ Live | `LeakCheck` public API, the one free source that really supports username search. Coverage is narrower than email, and the UI says so. |
 | **Password** | ✅ Live | Have I Been Pwned **Pwned Passwords** range API (free, unlimited, no key) with k-anonymity. Only a 5-character SHA-1 prefix leaves the browser. |
-| **Phone number** | ⛔ Explicit unavailable state | International input + E.164 validation are real; the public tiers of both sources reserve phone search for paid plans. Nothing is invented. |
+| **Phone number** | ✅ Live | `LeakCheck` public API with `type=phone`: the number is validated and normalised to E.164 by libphonenumber, then sent as bare digits. One source only — the UI says so, and repeats that numbers get recycled. |
 
 Everything else — navigation, FR/EN translation, error states, results page,
 provider transparency, privacy policy, documentation — is complete.
@@ -34,7 +34,7 @@ are the documented quotas of the ones that are genuinely free:
 | Source | Key | Quota | Notes |
 | --- | --- | --- | --- |
 | XposedOrNot `/v1/check-email/{email}?details=true` | none | 2 req/s, 25/hour, 100/day per IP | Breach names, dates, descriptions, exposed data |
-| LeakCheck `/api/public?check=…` | none | 1 req/s | Sources and exposed-data *categories*; never the data. Requires a "Powered by LeakCheck" link for commercial use (present in the footer) |
+| LeakCheck `/api/public?check=…` | none | 1 req/s | Email, username **and** phone (`&type=phone`, digits only). Sources and exposed-data *categories*; never the data. Requires a "Powered by LeakCheck" link for commercial use (present in the footer) |
 | HIBP `/range/{prefix}` | none | none documented | Free and effectively unlimited |
 
 Consequences, stated plainly:
@@ -52,10 +52,11 @@ Consequences, stated plainly:
 
 ### What is still missing, and why
 
-1. **Phone coverage.** LeakCheck answers `Could not determine search type
-   automatically` for a phone number on the public tier; the feature is paid.
-   The phone checker therefore validates the number and reports an unavailable
-   state. See *Extending the provider layer*.
+1. **Phone coverage is one source deep.** LeakCheck's public tier does answer
+   phone searches — but only when the number is sent as bare E.164 digits with
+   `type=phone` (a leading `+` makes it answer *Could not determine search type
+   automatically*). XposedOrNot has no phone endpoint, so a phone verdict rests
+   on a single index. A "no match" there is reported as exactly that.
 2. **Fleet-wide rate limiting.** The built-in limiter is per function instance
    (see *Security model*).
 
@@ -99,17 +100,18 @@ src/
 tests/                           123 unit + component tests
 ```
 
-### Request flow — email and username
+### Request flow — email, username and phone
 
 ```
-browser ──POST /api/check-email    {email, consent:true}──┐
+browser ──POST /api/check-email    {email, consent:true}───┐
         ──POST /api/check-username {username, consent:true}┤
+        ──POST /api/check-phone    {phone, consent:true}───┤  (E.164, `+` kept)
                                                             ▼
                                                   function (shared)
                               ┌─────────────────────────────┴──────────────┐
                               ▼                                            ▼
               XposedOrNot check-email?details=true              LeakCheck /api/public
-              (email only)                                      (email + username)
+              (email only)                          (email · username · digits&type=phone)
                               └───────────────┬────────────────────────────┘
                                               ▼
                           normalise → merge → derive state
@@ -118,7 +120,9 @@ browser ──POST /api/check-email    {email, consent:true}──┐
 ```
 
 Each endpoint queries only the adapters that really support that identifier —
-the username route never calls XposedOrNot, which has no username endpoint.
+the username and phone routes never call XposedOrNot. The phone route strips the
+`+` before the provider call: `+33612345678` is normalised to `33612345678`,
+which is the only shape LeakCheck types as a phone number.
 
 The verdict is derived, never assumed:
 
@@ -153,6 +157,7 @@ never placed in a URL. `Add-Padding` rows (count `0`) are ignored.
 | --- | --- | --- |
 | `POST` | `/api/check-email` | `{ email, consent: true }`. `no-store`. 8 req/min/IP. |
 | `POST` | `/api/check-username` | `{ username, consent: true }`. `no-store`. 8 req/min/IP. |
+| `POST` | `/api/check-phone` | `{ phone, consent: true }`. E.164 (with or without `+`); the server sends bare digits. 8 req/min/IP. |
 | `GET` | `/api/password-range?prefix=ABCDE` | Relay for the range API; 5 hex chars only. |
 | `GET` | `/api/providers` | Capability matrix + configuration state. |
 | `GET` | `/api/breach-stats` | Real aggregates from the XposedOrNot public index. |
@@ -230,7 +235,7 @@ as they will in production.
 
 ```bash
 npm run typecheck  # tsc --noEmit (strict, no unused locals)
-npm test           # 123 tests: validation, normalisation, merge, providers,
+npm test           # 132 tests: validation, normalisation, merge, providers,
                    # handlers, password protocol, i18n parity, UI flows
 npm run build      # typecheck + bundle to dist/
 npm run preview    # serve the production build
@@ -241,8 +246,9 @@ npm run preview    # serve the production build
 - `tests/providers.test.ts` — every failure mode is asserted to be *not* clean:
   `429`, `5xx`, network error, abort, unparseable body, unknown schema, missing key.
 - `tests/checkLookup.test.ts` — consent gating, `no-store`, 429 burst, merging
-  across both sources, the username route calling only LeakCheck, and proof that
-  the submitted value never appears in an error payload.
+  across both sources, the username and phone routes calling only LeakCheck, the
+  E.164 → bare-digits hop (no `%2B`, `type=phone` present), and proof that the
+  submitted value never appears in an error payload.
 - `tests/password.test.ts` — the request URL contains the prefix and *not* the
   rest of the digest; padding rows are ignored; the password is absent from
   storage.
@@ -292,7 +298,8 @@ The same handlers run on Vercel through Web-standard function entry points.
 2. `vercel.json` already declares the build, the SPA rewrite
    (`/((?!api/).*) → /index.html`) and the security headers.
 3. Every file in `api/` becomes a function at the matching `/api/*` path:
-   `check-email`, `check-username`, `password-range`, `providers`, `breach-stats`.
+   `check-email`, `check-username`, `check-phone`, `password-range`, `providers`,
+   `breach-stats`.
    Those files are **generated bundles** (`npm run build:api`, run by `npm run
    build`): Vercel loads `api/*.js` as plain Node modules, so a relative import
    of a TypeScript file outside `api/` would not resolve at runtime. Bundling

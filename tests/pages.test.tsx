@@ -44,21 +44,23 @@ beforeEach(() => {
                 configured: true,
                 activeForEmail: true,
                 activeForUsername: false,
+                activeForPhone: false,
               },
               {
                 id: 'leakcheck',
                 displayName: 'LeakCheck',
                 coverage: 'Public API over leaked records.',
                 homepage: 'https://leakcheck.io',
-                lookups: ['email', 'username'],
+                lookups: ['email', 'username', 'phone'],
                 configured: true,
                 activeForEmail: true,
                 activeForUsername: true,
+                activeForPhone: true,
               },
             ],
             emailProviders: ['xposedornot', 'leakcheck'],
             usernameProviders: ['leakcheck'],
-            phoneProviders: [],
+            phoneProviders: ['leakcheck'],
             passwordRangeAvailable: true,
           }),
           { status: 200 },
@@ -186,9 +188,61 @@ describe('checker pages', () => {
     const input = screen.getByLabelText('Numéro de téléphone')
     await user.type(input, '0612345678')
     expect(await screen.findByText(/\+33612345678/)).toBeInTheDocument()
+  })
 
+  it('requires consent, then sends the E.164 number without the plus', async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/api/check-phone')) {
+        return new Response(
+          JSON.stringify({
+            kind: 'phone',
+            ok: true,
+            state: 'breached',
+            checkedAt: '2026-11-08T10:00:00.000Z',
+            totalBreaches: 1,
+            breaches: [],
+            providers: [],
+            respondingProviders: 1,
+            totalProviders: 1,
+            durationMs: 700,
+          }),
+          { status: 200 },
+        )
+      }
+      return new Response('{}', { status: 404 })
+    })
+
+    render(
+      <Providers>
+        <PhoneChecker />
+      </Providers>,
+    )
+
+    await user.selectOptions(screen.getByLabelText('Pays'), 'FR')
+    await user.type(screen.getByLabelText('Numéro de téléphone'), '0612345678')
+
+    // Without consent the request never leaves the browser.
     await user.click(screen.getByRole('button', { name: 'Vérifier' }))
-    expect(await screen.findByText('Couverture indisponible en V1')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Cochez la case de consentement pour continuer.'),
+    ).toBeInTheDocument()
+    expect(
+      vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/check-phone')),
+    ).toBe(false)
+
+    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('button', { name: 'Vérifier' }))
+
+    const call = vi
+      .mocked(fetch)
+      .mock.calls.find(([url]) => String(url).includes('/api/check-phone'))
+    expect(call).toBeDefined()
+    expect(JSON.parse(String((call?.[1] as RequestInit).body))).toEqual({
+      phone: '+33612345678',
+      consent: true,
+    })
   })
 
   it('rejects an invalid phone number with a translated error', async () => {

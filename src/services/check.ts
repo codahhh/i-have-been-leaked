@@ -21,3 +21,15 @@ export function checkEmail(email: string, consent: boolean): Promise<CheckRespon
 export function checkUsername(username: string, consent: boolean): Promise<CheckResponse> {
   return postJson<CheckResponse>('/api/check-username', { username, consent }, 12_000)
 }
+
+/**
+ * Runs a phone number lookup.
+ *
+ * The number reaches this function already normalised to E.164 by
+ * libphonenumber (`+33612345678`). The server strips the `+` before calling the
+ * provider, which only understands bare digits, and the response reports the
+ * single source's answer exactly like the other kinds.
+ */
+export function checkPhone(phone: string, consent: boolean): Promise<CheckResponse> {
+  return postJson<CheckResponse>('/api/check-phone', { phone, consent }, 12_000)
+}

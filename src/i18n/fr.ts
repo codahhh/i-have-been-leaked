@@ -119,7 +119,7 @@ export const fr = {
   'search.type.phone.title': 'Numéro de téléphone',
   'search.type.phone.short': 'Téléphone',
   'search.type.phone.description':
-    'Saisie internationale validée ; aucune API gratuite ne couvre les numéros.',
+    'Saisie internationale validée, puis recherche réelle via l’API publique de LeakCheck.',
   'search.type.password.title': 'Mot de passe',
   'search.type.password.short': 'Mot de passe',
   'search.type.password.description':
@@ -148,6 +148,7 @@ export const fr = {
   'results.title': 'Résultat de la vérification',
   'results.for': 'Résultat pour {email}',
   'results.forUsername': 'Résultat pour @{username}',
+  'results.forPhone': 'Résultat pour {phone}',
   'results.checkedAt': 'Vérifié le {date}',
   'results.state.clean.title': 'Aucune correspondance trouvée',
   'results.state.clean.body':
@@ -186,7 +187,7 @@ export const fr = {
   'provider.coverage.xposedornot':
     'Index de fuites public couvrant des milliers de fuites divulguées. Endpoint e-mail gratuit, sans clé.',
   'provider.coverage.leakcheck':
-    'API publique sur plus de 10 milliards de données fuitées. Indique les sources et les catégories exposées, jamais les données elles-mêmes.',
+    'API publique sur plus de 10 milliards de données fuitées : e-mails, pseudos et numéros de téléphone. Indique les sources et les catégories exposées, jamais les données elles-mêmes.',
   'provider.categories': 'Catégories exposées (agrégées pour cette requête) : {categories}',
   'provider.status.ok': 'A répondu',
   'provider.status.not_found': 'A répondu — aucune correspondance',
@@ -332,28 +333,25 @@ export const fr = {
   /* ---------------------------------------------------------------- phone */
   'phone.page.title': 'Vérification de numéro de téléphone',
   'phone.page.lede':
-    'Le numéro est validé au format international (E.164) avant tout envoi. Les sources que nous interrogeons réservent la recherche par numéro à leurs offres payantes.',
+    'Le numéro est validé au format international (E.164) avant tout envoi, puis confronté à la seule source gratuite qui sait chercher par numéro. Une correspondance désigne une fuite publique, jamais une certitude sur vous.',
   'phone.form.label': 'Numéro de téléphone',
   'phone.form.country': 'Pays',
   'phone.form.placeholder': '6 12 34 56 78',
   'phone.form.submit': 'Vérifier',
   'phone.form.e164': 'Format international retenu : {e164}',
   'phone.form.countryHint': 'Choisissez le pays du numéro.',
-  'phone.unavailable.title': 'Couverture indisponible en V1',
-  'phone.unavailable.body':
-    'Aucun fournisseur branché ne permet de vérifier un numéro. Nous n’affichons donc ni « propre » ni fuite : les deux seraient des inventions.',
-  'phone.unavailable.reason1.title': 'Pas de source gratuite fiable',
-  'phone.unavailable.reason1.body':
-    'La recherche par numéro existe bien chez nos fournisseurs, mais uniquement derrière une offre payante. Aucune API gratuite et vérifiable ne la couvre aujourd’hui.',
-  'phone.unavailable.reason2.title': 'Un numéro n’est pas une identité',
-  'phone.unavailable.reason2.body':
-    'Un numéro recyclé par un opérateur peut avoir appartenu à quelqu’un d’autre. Une correspondance brute serait trompeuse sans contexte.',
-  'phone.unavailable.reason3.title': 'Priorité à la précision',
-  'phone.unavailable.reason3.body':
-    'La validation E.164 et l’architecture fournisseur sont en place. L’affichage d’un résultat n’attend qu’une source contractuelle.',
-  'phone.unavailable.next': 'Ce qui reste à configurer',
-  'phone.unavailable.nextBody':
-    'Une clé d’API auprès d’un fournisseur couvrant les numéros, puis un adaptateur déclaré dans netlify/lib/config.ts. Le formulaire ci-dessus est déjà prêt à l’appeler.',
+  'phone.form.note': 'Un numéro peut être recyclé : une correspondance reste un indice.',
+  'phone.consent.title': 'Ce qui est envoyé',
+  'phone.consent.body':
+    'Le numéro au format international, sans le signe « + », est transmis depuis notre fonction serveur à {providers}, le temps d’une requête. Il n’est ni enregistré, ni journalisé, ni renvoyé au navigateur.',
+  'phone.consent.checkbox': 'J’accepte l’interrogation de {providers}.',
+  'phone.consent.coverage':
+    'Une seule source publique répond aux recherches par numéro. Une absence de correspondance signifie « rien dans cette source », jamais « rien nulle part ».',
+  'phone.scope.title': 'Une couverture plus étroite que l’e-mail',
+  'phone.scope.body':
+    'Les numéros apparaissent surtout dans des fuites de e-commerce, de services et de bases marketing. Une réponse négative ne prouve pas que le numéro est absent partout.',
+  'phone.results.caveat':
+    'Un numéro peut avoir été recyclé par un opérateur : la correspondance peut concerner un ancien titulaire. Traitez-la comme un indice, pas comme une preuve.',
 
   /* -------------------------------------------------------------- loading */
   'loading.title': 'Vérification en cours',
@@ -413,7 +411,7 @@ export const fr = {
     'Une application React/TypeScript, des fonctions Netlify côté serveur, et un adaptateur par fournisseur. Les clés d’API restent sur le serveur ; le navigateur ne dialogue qu’avec notre propre API, sauf pour la vérification de mot de passe où l’appel part directement vers l’API de plages.',
   'about.limits.title': 'Limites assumées',
   'about.limits.body':
-    'Les recherches par pseudo reposent sur une seule source gratuite, donc sur une couverture plus étroite que les adresses e-mail ; les recherches par numéro restent indisponibles faute d’API gratuite. La vérification d’adresse dépend de la disponibilité de XposedOrNot et de LeakCheck. Les mots de passe ne sont jamais transmis, mais l’API de plages voit l’empreinte partielle et votre adresse IP.',
+    'Les recherches par pseudo et par numéro reposent sur une seule source gratuite (LeakCheck), donc sur une couverture plus étroite que les adresses e-mail, qui en interrogent deux. Leur quota public est d’une requête par seconde. Les mots de passe ne sont jamais transmis, mais l’API de plages voit l’empreinte partielle et votre adresse IP.',
   'about.stack.title': 'Technique',
   'about.stack.body':
     'React 19, TypeScript, Vite, Tailwind CSS, icônes Lucide, fonctions Netlify. Aucune base de données, aucun compte, aucun traqueur.',
@@ -436,7 +434,7 @@ export const fr = {
     'Nous ne créons pas de compte, ne posons pas de cookie de mesure d’audience, n’utilisons ni Google Analytics ni équivalent, et ne conservons pas les adresses recherchées. Il n’existe donc aucune base à laquelle nous pourrions vous rattacher.',
   'privacy.s2.title': 'Ce qui est transmis aux fournisseurs',
   'privacy.s2.body':
-    'Lorsque vous lancez une vérification et que vous y consentez, l’adresse ou le pseudo est envoyé à XposedOrNot (adresses) et à LeakCheck depuis notre fonction serveur. Ces fournisseurs sont des tiers indépendants : ils voient la valeur recherchée, l’adresse IP de notre fonction, et appliquent leur propre politique de conservation. Nous ne pouvons pas garantir l’anonymat de cette transmission.',
+    'Lorsque vous lancez une vérification et que vous y consentez, l’adresse, le pseudo ou le numéro est envoyé à XposedOrNot (adresses) et à LeakCheck depuis notre fonction serveur. Ces fournisseurs sont des tiers indépendants : ils voient la valeur recherchée, l’adresse IP de notre fonction, et appliquent leur propre politique de conservation. Nous ne pouvons pas garantir l’anonymat de cette transmission.',
   'privacy.s2.xon': 'XposedOrNot — politique de confidentialité',
   'privacy.s2.leakcheck': 'LeakCheck — conditions et confidentialité',
   'privacy.s3.title': 'Mots de passe',
@@ -468,6 +466,10 @@ export const fr = {
   'docs.api.title': 'API interne',
   'docs.api.checkEmail':
     'POST — { email: string, consent: true }. Renvoie un état (clean / breached / incomplete / error), les fuites fusionnées et l’état de chaque fournisseur. Jamais mis en cache.',
+  'docs.api.checkUsername':
+    'POST — { username: string, consent: true }. Même contrat que l’e-mail, sur les seules sources qui savent chercher un pseudo.',
+  'docs.api.checkPhone':
+    'POST — { phone: string, consent: true }. Le numéro doit être au format E.164 ; le serveur retire le « + » avant d’interroger la source.',
   'docs.api.passwordRange':
     'GET ?prefix=ABCDE — relais de l’API de plages HIBP. Reçoit uniquement 5 caractères d’empreinte.',
   'docs.api.providers':

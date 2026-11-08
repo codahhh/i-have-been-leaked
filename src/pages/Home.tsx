@@ -44,6 +44,14 @@ export function Home() {
     [navigate, setResult],
   )
 
+  const handlePhoneResult = useCallback(
+    (phone: string, result: CheckResponse) => {
+      setResult('phone', { identifier: phone, result })
+      navigate('/check/phone/results')
+    },
+    [navigate, setResult],
+  )
+
   const activeType = SEARCH_TYPES.find((item) => item.id === type)
 
   return (
@@ -97,7 +105,9 @@ export function Home() {
                 {type === 'username' ? (
                   <UsernameSearchForm onResult={handleUsernameResult} variant="compact" />
                 ) : null}
-                {type === 'phone' ? <PhoneSearchForm compact /> : null}
+                {type === 'phone' ? (
+                  <PhoneSearchForm onResult={handlePhoneResult} variant="compact" />
+                ) : null}
               </div>
             </div>
 
