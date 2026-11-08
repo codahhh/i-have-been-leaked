@@ -5,6 +5,7 @@ import type { EmailCheckResponse } from '@/types'
 import { useI18n } from '@/i18n'
 import { useResults } from '@/state/ResultsContext'
 import { PageHeader } from '@/components/PageHeader'
+import { Card } from '@/components/ui/Card'
 import { EmailSearchForm } from '@/components/EmailSearchForm'
 import { PrivacyNotice } from '@/components/PrivacyNotice'
 
@@ -30,9 +31,9 @@ export function EmailChecker() {
       />
 
       <div className="grid gap-8 py-10 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-12">
-        <div className="card p-5 sm:p-7">
+        <Card className="p-5 sm:p-7">
           <EmailSearchForm onResult={handleResult} autoFocus variant="full" />
-        </div>
+        </Card>
 
         <aside className="space-y-4">
           <PrivacyNotice

@@ -63,8 +63,3 @@ export function isValidUsername(raw: string): boolean {
 export function isValidSha1Prefix(prefix: string): boolean {
   return /^[0-9A-Fa-f]{5}$/.test(prefix)
 }
-
-/** Basic sanity check for a 5-character base32 prefix (used by `/providers`). */
-export function clampString(value: string, max: number): string {
-  return value.length > max ? value.slice(0, max) : value
-}

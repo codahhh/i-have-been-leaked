@@ -4,7 +4,7 @@ import { cn } from '@/utils/cn'
 
 const LABELS: Record<Language, string> = { fr: 'FR', en: 'EN' }
 
-export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
+export function LanguageSwitcher() {
   const { lang, setLanguage, t } = useI18n()
 
   return (
@@ -13,9 +13,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
       aria-label={t('lang.label')}
       className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface p-0.5"
     >
-      {!compact ? (
-        <Languages className="ml-1.5 h-3.5 w-3.5 text-faint" aria-hidden />
-      ) : null}
+      <Languages className="ml-1.5 h-3.5 w-3.5 text-faint" aria-hidden />
 
       {LANGUAGES.map((language) => {
         const active = language === lang

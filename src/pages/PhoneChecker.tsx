@@ -1,5 +1,6 @@
 import { useI18n } from '@/i18n'
 import { PageHeader } from '@/components/PageHeader'
+import { Card } from '@/components/ui/Card'
 import { PhoneSearchForm } from '@/components/PhoneSearchForm'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
@@ -16,9 +17,9 @@ export function PhoneChecker() {
       />
 
       <div className="grid gap-8 py-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12">
-        <div className="card p-5 sm:p-7">
+        <Card className="p-5 sm:p-7">
           <PhoneSearchForm autoFocus alwaysShow />
-        </div>
+        </Card>
 
         <aside className="space-y-4">
           <div className="rounded-2xl border border-line-soft bg-surface p-5">

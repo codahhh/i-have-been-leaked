@@ -1,6 +1,7 @@
 import { Fingerprint, Hash, WifiOff } from 'lucide-react'
 import { useI18n } from '@/i18n'
 import { PageHeader } from '@/components/PageHeader'
+import { Card } from '@/components/ui/Card'
 import { PasswordSearchForm } from '@/components/PasswordSearchForm'
 import { SecurityRecommendations } from '@/components/SecurityRecommendations'
 
@@ -22,9 +23,9 @@ export function PasswordChecker() {
       />
 
       <div className="grid gap-8 py-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12">
-        <div className="card p-5 sm:p-7">
+        <Card className="p-5 sm:p-7">
           <PasswordSearchForm autoFocus />
-        </div>
+        </Card>
 
         <aside className="space-y-4">
           <div className="rounded-2xl border border-line-soft bg-surface p-5">
